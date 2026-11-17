@@ -130,6 +130,11 @@
       cat.setPos(cat.x + side * 240, 0);
       sfx.play('squeak');
 
+      // Mostly the chase goes up onto something - a window top, a ledge on
+      // screen - and plays out there; sometimes along the bottom.
+      const spot = Math.random() < 0.7 ? this.chaseSpot() : null;
+      if (spot) return this.chaseAlong(s, spot, -side, v);
+
       // Whatever is in the way gets hopped over or climbed; if it can't be,
       // the mouse doubles back and the chase goes out the way it came.
       const stopX = this.vw * rand(0.35, 0.65);
@@ -145,6 +150,49 @@
       await s.wait(1000);
       const getaway = loco.exit(s, mouse, dir, { speed: v * 1.25 }).catch(() => {});
       await loco.jump(s, cat, mouse.x, mouse.y, { windup: 300 });
+      cat.setState('confused');
+      await s.wait(900);
+      await getaway;
+      s.check();
+      await loco.exit(s, cat, dir, { speed: v });
+    }
+
+    // A surface up off the floor with room for a chase: wide enough for both,
+    // with headroom, and that they can get onto from the floor.
+    chaseSpot() {
+      const { cat, terrain, loco } = this.w;
+      const floor = terrain.floor();
+      const ok = terrain.platforms.filter(
+        (p) => p.x2 - p.x1 >= cat.w * 3 && p.top >= 90 && p.top <= this.vh - cat.h - 30 && loco.route(floor, p, cat)
+      );
+      return ok.length ? pick(ok) : null;
+    }
+
+    // The chase on surface p, heading dir: the mouse makes its way up with the
+    // cat on its tail, they tear along the top, the mouse stops to taunt, the
+    // cat pounces - and the mouse is already off the end and away.
+    async chaseAlong(s, p, dir, v) {
+      const { cat, mouse, loco } = this.w;
+      const m = cat.w * 0.6;
+      const from = dir > 0 ? p.x1 + m : p.x2 - m;
+      const along = dir > 0 ? rand(0.55, 0.8) : rand(0.2, 0.45); // well past the middle, going their way
+      const stopX = clamp(p.x1 + (p.x2 - p.x1) * along, p.x1 + m, p.x2 - m);
+      const mouseUp = loco.travel(s, mouse, p, from);
+      const catUp = s.wait(450).then(() => loco.travel(s, cat, p, from));
+      await mouseUp;
+      s.check();
+      const catAlong = catUp.then(() => loco.walk(s, cat, clamp(stopX - dir * 180, p.x1 + m, p.x2 - m), { speed: v * 0.85 }));
+      await loco.walk(s, mouse, stopX, { speed: v * 0.85 });
+      mouse.face(-dir);
+      mouse.setState('taunt');
+      await catAlong;
+      s.check();
+      cat.setState('land');
+      await s.wait(700);
+      // Off the far end and away; the cat lands where it was.
+      const getaway = loco.exit(s, mouse, dir, { speed: v * 1.25 }).catch(() => {});
+      await s.wait(120);
+      await loco.jump(s, cat, mouse.x, p.top, { windup: 300 });
       cat.setState('confused');
       await s.wait(900);
       await getaway;

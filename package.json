@@ -1,6 +1,6 @@
 {
   "name": "tomstretch",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A cat and mouse who live on your desktop, climb your windows, and nudge you to take stretch breaks.",
   "private": true,
   "main": "desktop/main.js",

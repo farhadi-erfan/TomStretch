@@ -31,9 +31,23 @@
   box-shadow: 0 2px 0 var(--wood-edge), 0 5px 9px rgba(0,0,0,.22);
 }
 .dp-sign-stick { width: 4px; height: 20px; background: var(--stick); border: 1px solid var(--wood-edge); border-top: 0; }
+.dp-sign.dp-sign-under { bottom: auto; top: 100%; flex-direction: column-reverse; transform-origin: top center; }
+.dp-sign.dp-sign-under .dp-sign-stick { border-top: 1px solid var(--wood-edge); border-bottom: 0; }
 .dp-sign.dp-sign-big .dp-sign-board { font-size: 14px; padding: 5px 12px; }
 .dp-sign.dp-clickable .dp-sign-board { pointer-events: auto; cursor: pointer; }
-.dp-sign.dp-clickable .dp-sign-board:hover { background: #ffedc4; }
+.dp-sign.dp-clickable:not(.dp-choices) .dp-sign-board:hover { background: #ffedc4; }
+/* A question on the sign, with answer buttons under it. */
+.dp-sign.dp-choices .dp-sign-board { cursor: default; font-size: 15px; padding: 6px 10px 8px; }
+.dp-sign-choices { display: flex; gap: 5px; justify-content: center; margin-top: 6px; }
+.dp-sign-choice {
+  all: unset; cursor: pointer; padding: 2px 10px; border-radius: 999px;
+  font: 800 12.5px/1.4 system-ui, sans-serif; color: #3b2a20;
+  border: 1.5px solid var(--wood-edge); background: #fff8e6;
+}
+.dp-sign-choice:hover { background: #ffedc4; transform: scale(1.06); }
+.dp-sign-choice.dp-primary { background: #f2994a; }
+.dp-sign-choice.dp-primary:hover { background: #f5a965; }
+.dp-sign-choice:focus-visible { outline: 2px solid #2b6cb0; outline-offset: 2px; }
 
 /* Impact stars where the mouse meets the pointer. */
 .dp-burst {
@@ -54,6 +68,11 @@
   transition: transform .35s cubic-bezier(.3,1.4,.5,1), visibility 0s .35s;
 }
 .dp-boards.dp-show, .dp-timer.dp-show { transform: none; visibility: visible; transition-delay: 0s; }
+/* Hung from the top edge on strings (beside a cat hanging off a button). */
+.dp-boards.dp-hung, .dp-timer.dp-hung { align-items: flex-start; transform: translateY(-110%); }
+.dp-boards.dp-hung.dp-show, .dp-timer.dp-hung.dp-show { transform: none; }
+.dp-hung .dp-board { margin-bottom: 0; margin-top: 40px; }
+.dp-hung .dp-board::after { top: auto; bottom: 100%; width: 2px; margin-left: -1px; height: 42px; border: 0; background: var(--wood-edge); }
 .dp-board {
   all: unset; box-sizing: border-box; position: relative; margin-bottom: 40px;
   background: var(--wood); border: 2px solid var(--wood-edge); border-radius: 6px; color: #3b2a20;

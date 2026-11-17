@@ -34,14 +34,31 @@
     apply(world.settings);
     DP.settings.onChange(apply);
 
+    // Run a scene on request (the desktop app's tray menu, for testing).
+    // A pointer gag asked for from the menu would aim at the menu itself
+    // (the menu bar, or the taskbar), out of reach: wait - up to 8 s - for
+    // the pointer to come back down to somewhere they can get at.
+    world.playScene = (name) => {
+      const b = world.behaviors;
+      const go = () => b.play(name, 2.2, (s) => b[name](s));
+      if (name !== 'wrongMouse' && name !== 'hello') return go();
+      const until = Date.now() + 8000;
+      const wait = () => {
+        const cur = world.sensors.cursor;
+        const settled = Date.now() - (cur.movedAt || 0) > 350; // stopped moving
+        if ((b.cursorReachable() && cur.y > 60 && settled) || Date.now() > until) go();
+        else setTimeout(wait, 150);
+      };
+      setTimeout(wait, 400);
+    };
+
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!msg) return;
       if (msg.type === 'BREAK_START') {
         world.breaks.start();
         sendResponse({ ok: true });
       } else if (msg.type === 'SCENE' && typeof world.behaviors[msg.name] === 'function' && world.settings.enabled) {
-        // Run a scene on request (the desktop app's tray menu, for testing).
-        world.behaviors.play(msg.name, 2.2, (s) => world.behaviors[msg.name](s));
+        world.playScene(msg.name);
       } else if (msg.type === 'BREAK_RETURN') {
         world.breaks.onReturn();
       }

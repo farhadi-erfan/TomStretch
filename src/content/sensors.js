@@ -79,6 +79,7 @@
     }
 
     _onMove(e) {
+      this.cursor.movedAt = Date.now();
       this.cursor.x = e.clientX;
       this.cursor.y = e.clientY;
       this.cursor.seen = true;
@@ -116,6 +117,7 @@
 
     // External input (desktop app).
     injectCursor(x, y) {
+      if (x !== this.cursor.x || y !== this.cursor.y) this.cursor.movedAt = Date.now();
       this.cursor.x = x;
       this.cursor.y = y;
       this.cursor.seen = true;

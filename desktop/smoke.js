@@ -56,36 +56,37 @@ module.exports = function smoke(overlay, startBreak, probe, settingsWindow) {
     await log('boot');
     startBreak();
   });
+  // The break: arrive, ask, (pretend to) minimize, two exercises, done.
+  // Never minimizes anything unless DESKPET_LIVE is set.
   at(3100, () => js(`(() => { const b = DeskPet.world.breaks, o = b.onAction.bind(b); window.__acts = []; b.onAction = (a) => { window.__acts.push(a + '@' + Math.round(performance.now())); o(a); }; })()`));
-  at(11800, () => log('before choice'));
-  at(13400, async () => console.log('[smoke] actions so far', await js('JSON.stringify(window.__acts)')));
-  at(13500, async () => {
-    await shot('lunge.png');
-    await log('choice');
-    await js(`DeskPet.world.breaks.onAction('start')`);
-  });
-  at(18500, async () => {
-    await shot('exercise.png');
-    await log('exercise');
-    if (!live) return app.quit();
-    await js(`DeskPet.world.breaks.onAction('minimize')`);
-  });
-  if (!live) return;
   let target = null;
-  at(20500, async () => {
+  const choiceUp = () => js(`DeskPet.world.cat.signEl.classList.contains('dp-choices')`);
+  const waitFor = async (fn, ms) => {
+    for (const end = Date.now() + ms; Date.now() < end; await new Promise((r) => setTimeout(r, 250))) if (await fn()) return true;
+    return false;
+  };
+  at(3300, async () => {
     const p = probe();
-    await log('heading for the button');
-    if (p.located) console.log('[live] windows before:', await onScreen(p.located.pid));
-  });
-  at(31000, async () => {
-    target = probe().minimizedTarget;
+    if (live && p.located) console.log('[live] windows before:', await onScreen(p.located.pid));
+    const asked = await waitFor(choiceUp, 25000);
+    await shot('choice.png');
+    await log(asked ? 'asking' : 'never asked');
+    await js(`DeskPet.world.breaks.onAction('start')`);
+    await new Promise((r) => setTimeout(r, 2500));
     await log('after press');
-    if (target) console.log('[live] windows after press:', await onScreen(target.pid));
+    target = probe().minimizedTarget;
+    if (live && target) console.log('[live] windows after press:', await onScreen(target.pid));
+    await waitFor(() => js(`DeskPet.world.breaks.timerEl.classList.contains('dp-show')`), 15000);
+    await new Promise((r) => setTimeout(r, 1500));
+    await shot('exercise.png');
+    await log('exercise 1');
+    await new Promise((r) => setTimeout(r, 23500));
+    await shot('exercise2.png');
+    await log('exercise 2');
     await js(`DeskPet.world.breaks.onAction('done')`);
-  });
-  at(39000, async () => {
+    await new Promise((r) => setTimeout(r, 2500));
     await log('after done');
-    if (target) console.log('[live] windows after restore:', await onScreen(target.pid));
+    if (live && target) console.log('[live] windows after restore:', await onScreen(target.pid));
     app.quit();
   });
 };

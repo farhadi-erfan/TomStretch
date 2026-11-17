@@ -11,6 +11,9 @@
     autoMinimize: false, // opt-in: cat presses the minimize button by itself
     restoreAfterBreak: true, // desktop app: bring the minimized window back afterwards
     exercises: {
+      chin: true,
+      tilt: true,
+      chest: true,
       overhead: true,
       side: true,
       shoulders: true,

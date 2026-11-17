@@ -423,6 +423,27 @@
 }
 .dp-char[data-char="mouse"][data-state="ex-wrists"] .arm { animation: dp-ex-shake-arm .22s linear infinite; }
 
+@keyframes dp-ex-tuck { 0%,18%,88%,100% { transform: none; } 30%,72% { transform: translateY(3px) scale(1, .96); } }
+.dp-char[data-state="ex-chin"] {
+  .head { animation: dp-ex-tuck 3.6s ease-in-out infinite; }
+  .arm-r { transform: rotate(-150deg); }
+  .arm-r .fore { transform: rotate(-80deg); }
+}
+
+@keyframes dp-ex-tilt { 0%,8%,50%,58%,100% { transform: none; } 18%,40% { transform: rotate(18deg); } 68%,90% { transform: rotate(-18deg); } }
+.dp-char[data-state="ex-tilt"] {
+  .head { animation: dp-ex-tilt 7s ease-in-out infinite; }
+}
+
+@keyframes dp-ex-open { 0%,100% { transform: rotate(calc(var(--s) * 6deg)); } 30%,70% { transform: rotate(calc(var(--s) * 30deg)); } }
+@keyframes dp-ex-chest { 0%,100% { transform: none; } 30%,70% { transform: scale(1.05, 1.02); } }
+@keyframes dp-ex-chin-up { 0%,100% { transform: none; } 30%,70% { transform: translateY(-2px); } }
+.dp-char[data-state="ex-chest"] {
+  .arm { animation: dp-ex-open 4s ease-in-out infinite; }
+  .torso { animation: dp-ex-chest 4s ease-in-out infinite; }
+  .head { animation: dp-ex-chin-up 4s ease-in-out infinite; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dp-char .torso, .dp-char .tail { animation: none; }
 }

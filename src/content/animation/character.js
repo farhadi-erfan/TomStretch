@@ -61,7 +61,7 @@
       this.el.innerHTML = '<div class="dp-sign"><div class="dp-sign-board"></div><div class="dp-sign-stick"></div></div>';
       this.signEl = this.el.querySelector('.dp-sign');
       this.boardEl = this.el.querySelector('.dp-sign-board');
-      this.boardEl.addEventListener('click', () => this._signClick && this._signClick());
+      this.boardEl.addEventListener('click', (e) => this._signClick && this._signClick(e));
       this.el.style.setProperty('--hx', def.hand.x * 100 + '%');
       this.el.style.setProperty('--hy', def.hand.y * 100 + '%');
       this.renderer = renderer || new SvgRigRenderer(def);
@@ -180,12 +180,35 @@
 
     // Speak by holding up a sign. ms = 0 keeps it up until hush().
     // opts.onClick makes the sign a button; opts.big uses larger lettering.
+    // opts.choices: [{act, label, primary}] puts answer buttons on the sign
+    // under the text; opts.onChoose(act) gets the one clicked.
     say(text, ms = 2600, opts = {}) {
       clearTimeout(this._sayTimer);
       this.boardEl.textContent = text;
       this._signClick = opts.onClick || null;
-      this.signEl.classList.toggle('dp-clickable', !!opts.onClick);
+      if (opts.choices) {
+        const row = document.createElement('div');
+        row.className = 'dp-sign-choices';
+        for (const c of opts.choices) {
+          const b = document.createElement('button');
+          b.className = 'dp-sign-choice' + (c.primary ? ' dp-primary' : '');
+          b.dataset.act = c.act;
+          b.textContent = c.label;
+          if (c.title) b.title = c.title;
+          row.append(b);
+        }
+        this.boardEl.append(row);
+        this._signClick = (e) => {
+          const b = e && e.target && e.target.closest && e.target.closest('[data-act]');
+          if (b && opts.onChoose) opts.onChoose(b.dataset.act);
+        };
+      }
+      this.signEl.classList.toggle('dp-choices', !!opts.choices);
+      this.signEl.classList.toggle('dp-clickable', !!this._signClick);
       this.signEl.classList.toggle('dp-sign-big', !!opts.big);
+      // Near the top of the screen (hanging off a button) the sign dangles
+      // below instead, where it can be read.
+      this.signEl.classList.toggle('dp-sign-under', window.innerHeight - this.y - this.h * this.zoom < 70);
       this.signEl.classList.add('dp-show');
       this.el.dataset.sign = '1'; // the rig raises an arm to hold it
       if (this.renderer.setHolding) this.renderer.setHolding(true);
@@ -202,7 +225,7 @@
     hush() {
       clearTimeout(this._sayTimer);
       this._signClick = null;
-      this.signEl.classList.remove('dp-show', 'dp-clickable');
+      this.signEl.classList.remove('dp-show', 'dp-clickable', 'dp-choices');
       delete this.el.dataset.sign;
       if (this.renderer && this.renderer.setHolding) this.renderer.setHolding(false);
     }

@@ -38,5 +38,10 @@
     'ex-march': {},
     'ex-lookaway': {},
     'ex-wrists': {},
+    // Added later: new states go at the end, so the Rive state numbers of the
+    // ones above stay the same.
+    'ex-chin': { mouth: 'flat' },
+    'ex-tilt': {},
+    'ex-chest': {},
   };
 })(globalThis);

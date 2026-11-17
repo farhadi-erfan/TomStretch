@@ -3,10 +3,12 @@
 //
 // macOS: System Events via osascript. Needs the Accessibility permission, and
 //        macOS asks once whether TomStretch may control "System Events".
-// Windows: no button lookup; minimizes the foreground window with user32
-//        ShowWindow via PowerShell. (Written but not yet tested.)
+// Windows: user32 via PowerShell. The button's place comes from the window's
+//        title bar info (WM_GETTITLEBARINFOEX), or for apps that draw their
+//        own title bar, from the usual spot at its top right. Pressing it
+//        minimizes that window (ShowWindow). Only lightly tested.
 const { execFile } = require('child_process');
-const { systemPreferences } = require('electron');
+const { systemPreferences, screen } = require('electron');
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
@@ -128,8 +130,55 @@ const WIN_API =
   '[DllImport("user32.dll")] public static extern System.IntPtr GetForegroundWindow();' +
   '[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c);' +
   '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);' +
+  '[DllImport("user32.dll")] public static extern bool IsIconic(System.IntPtr h);' +
+  '[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(System.IntPtr h, out uint pid);' +
+  '[DllImport("user32.dll")] public static extern int GetClassName(System.IntPtr h, System.Text.StringBuilder s, int n);' +
+  '[DllImport("user32.dll")] public static extern int GetWindowText(System.IntPtr h, System.Text.StringBuilder s, int n);' +
+  '[DllImport("user32.dll")] public static extern uint GetDpiForWindow(System.IntPtr h);' +
+  '[DllImport("user32.dll")] public static extern bool GetWindowRect(System.IntPtr h, int[] r);' +
+  '[DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(System.IntPtr h, int a, int[] r, int n);' +
+  '[DllImport("user32.dll")] public static extern System.IntPtr SendMessage(System.IntPtr h, int m, System.IntPtr w, int[] l);' +
   "';";
 const powershell = (script) => run('powershell', ['-NoProfile', '-NonInteractive', '-Command', WIN_API + script]);
+
+// Foreground window and its minimize button, in physical pixels:
+// "hwnd|x|y|w|h|title", or an error naming why there's nothing to aim at.
+// TITLEBARINFOEX: cbSize, rcTitleBar[4], rgstate[6], rgrect[6][4] - 35 ints;
+// the minimize button is rgrect[2] (ints 19..22).
+const WIN_LOCATE = `
+$h = [DP.W]::GetForegroundWindow()
+if ($h -eq [IntPtr]::Zero) { throw 'DESKPET_NO_WINDOW' }
+$p = 0; [DP.W]::GetWindowThreadProcessId($h, [ref]$p) | Out-Null
+if ($p -eq SELF_PID) { throw 'DESKPET_SELF_FRONT' }
+$c = New-Object System.Text.StringBuilder 256; [DP.W]::GetClassName($h, $c, 256) | Out-Null
+if (@('Progman','WorkerW','Shell_TrayWnd','Shell_SecondaryTrayWnd') -contains $c.ToString()) { throw 'DESKPET_NO_WINDOW' }
+if ([DP.W]::IsIconic($h)) { throw 'DESKPET_NO_WINDOW' }
+$t = New-Object System.Text.StringBuilder 512; [DP.W]::GetWindowText($h, $t, 512) | Out-Null
+$i = New-Object int[] 35; $i[0] = 140
+[DP.W]::SendMessage($h, 0x033F, [IntPtr]::Zero, $i) | Out-Null
+$x = $i[19]; $y = $i[20]; $w = $i[21] - $i[19]; $hh = $i[22] - $i[20]
+if ($w -le 0 -or $hh -le 0) {
+  $r = New-Object int[] 4
+  if ([DP.W]::DwmGetWindowAttribute($h, 9, $r, 16) -ne 0) { [DP.W]::GetWindowRect($h, $r) | Out-Null }
+  $k = [DP.W]::GetDpiForWindow($h) / 96.0; if ($k -le 0) { $k = 1 }
+  $w = [int](46 * $k); $hh = [int](30 * $k)
+  $x = $r[2] - 3 * $w; $y = $r[1]
+}
+"$($h.ToInt64())|$x|$y|$w|$hh|$($t.ToString())"`;
+
+async function winButton(selfPid) {
+  const out = await powershell(WIN_LOCATE.replace('SELF_PID', String(selfPid)));
+  const [hwnd, x, y, w, h, ...title] = out.split('|');
+  // Physical pixels -> the points Electron (and the overlay) use.
+  const r = screen.screenToDipRect(null, { x: Number(x), y: Number(y), width: Number(w), height: Number(h) });
+  return { hwnd, title: title.join('|'), button: r };
+}
+
+function winFailure(e) {
+  console.warn('[DeskPet] window control failed:', e.message.split('\n')[0]);
+  if (/DESKPET_SELF_FRONT|DESKPET_NO_WINDOW/.test(e.message)) return { ok: false, hint: 'Click a window first' };
+  return { ok: false, hint: "It won't budge" };
+}
 
 // ---- Public API ------------------------------------------------------------
 
@@ -148,6 +197,14 @@ async function frontAppPid() {
 // -> { ok: false, unsupported: true }   no real button to aim at on this OS
 // -> { ok: false, hint }                something the cat can say
 async function locateMinimizeButton(ctx) {
+  if (process.platform === 'win32') {
+    try {
+      const target = await winButton(ctx.selfPid);
+      return { ok: true, target, button: target.button };
+    } catch (e) {
+      return winFailure(e);
+    }
+  }
   if (process.platform !== 'darwin') return { ok: false, unsupported: true };
   try {
     const target = await macButton('locate', ctx);
@@ -167,12 +224,16 @@ async function pressMinimizeButton(ctx, target) {
       return { ok: true, target: await macButton('press', { ...ctx, targetPid: target && target.pid }) };
     }
     if (process.platform === 'win32') {
-      const hwnd = await powershell('$h=[DP.W]::GetForegroundWindow(); [DP.W]::ShowWindow($h,6) | Out-Null; $h.ToInt64()');
-      return { ok: true, target: { hwnd } };
+      // The window the cat is standing on (from locate), else the front one.
+      const h = target && target.hwnd ? String(target.hwnd).replace(/[^0-9-]/g, '') : null;
+      const hwnd = await powershell(
+        h ? `$h=[System.IntPtr]${h}; [DP.W]::ShowWindow($h,6) | Out-Null; $h.ToInt64()` : '$h=[DP.W]::GetForegroundWindow(); [DP.W]::ShowWindow($h,6) | Out-Null; $h.ToInt64()'
+      );
+      return { ok: true, target: { hwnd, title: target && target.title } };
     }
     return { ok: false, hint: "Can't do that here" };
   } catch (e) {
-    return failure(e);
+    return process.platform === 'win32' ? winFailure(e) : failure(e);
   }
 }
 

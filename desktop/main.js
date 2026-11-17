@@ -130,12 +130,15 @@ const handlers = {
     if (!res.ok) return res;
     const b = overlay.getBounds();
     const x = res.button.x + res.button.width / 2 - b.x;
-    const y = res.button.y + res.button.height / 2 - b.y;
+    let y = res.button.y + res.button.height / 2 - b.y;
+    if (y < 0 && y > -40) y = 2; // a title bar tucked under the menu bar: just reachable
     if (x < 0 || y < 0 || x > b.width || y > b.height) return { ok: false, hint: "Can't reach that screen" };
     located = res.target;
     return { ok: true, x, y };
   },
   async MINIMIZE_WINDOW() {
+    // Test runs leave the user's windows alone unless DESKPET_LIVE is set.
+    if (process.env.DESKPET_SMOKE && !process.env.DESKPET_LIVE) return (located = null), { ok: true };
     const res = await windowControl.pressMinimizeButton(windowCtx(), located);
     located = null;
     if (!res.ok) return res;
@@ -361,7 +364,6 @@ function buildTrayMenu() {
       { label: 'Resume breaks', visible: paused, click: () => saveSettings({ pausedUntil: 0 }) },
       { type: 'separator' },
       { label: 'Show companion', type: 'checkbox', checked: s.enabled, click: (item) => saveSettings({ enabled: item.checked }) },
-      { label: 'Minimize window automatically', type: 'checkbox', checked: s.autoMinimize, click: (item) => saveSettings({ autoMinimize: item.checked }) },
       { label: 'Climb on things inside windows', type: 'checkbox', checked: s.visionTerrain, click: (item) => saveSettings({ visionTerrain: item.checked }) },
       {
         label: 'Simple art (if a pet is invisible)',

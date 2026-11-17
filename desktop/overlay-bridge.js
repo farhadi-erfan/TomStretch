@@ -3,7 +3,7 @@
 // only while the pointer is over something of ours that takes clicks.
 (function () {
   const bridge = window.deskpetBridge;
-  const CLICKABLE = '.dp-boards.dp-show .dp-board-btn, .dp-timer.dp-show .dp-board, .dp-minbtn.dp-show, .dp-sign.dp-show.dp-clickable .dp-sign-board';
+  const CLICKABLE = '.dp-timer.dp-show .dp-board, .dp-minbtn.dp-show, .dp-sign.dp-show.dp-clickable .dp-sign-board';
   let interactive = false;
   const pending = {}; // terrain layers that arrived before the world was built
 

@@ -192,6 +192,22 @@ function poses(isMouse) {
     pair('fore', (s) => ({ rot: swing(2, s * 15, s * 50, 0, 'linear') }))
   ));
 
+  // Tech-neck exercises.
+  def('ex-chin', 216, true, merge(
+    { head: { y: keys([[0, 0], [0.18, 0], [0.3, 3], [0.72, 3], [0.88, 0], [1, 0]]), sy: keys([[0, 1], [0.18, 1], [0.3, 0.96], [0.72, 0.96], [0.88, 1], [1, 1]]) } },
+    { armR: { rot: -150 }, foreR: { rot: -80 } }
+  ), true);
+  def('ex-tilt', 420, true, {
+    head: { rot: keys([[0, 0], [0.08, 0], [0.18, 18], [0.4, 18], [0.5, 0], [0.58, 0], [0.68, -18], [0.9, -18], [1, 0]]) },
+  }, true);
+  def('ex-chest', 240, true, merge(
+    {
+      torso: { sx: keys([[0, 1], [0.3, 1.05], [0.7, 1.05], [1, 1]]), sy: keys([[0, 1], [0.3, 1.02], [0.7, 1.02], [1, 1]]) },
+      head: { y: keys([[0, 0], [0.3, -2], [0.7, -2], [1, 0]]) },
+    },
+    pair('arm', (s) => ({ rot: keys([[0, s * 6], [0.3, s * 30], [0.7, s * 30], [1, s * 6]]) }))
+  ));
+
   // Not used by any scene at present; kept so state numbers stay stable.
   P.sneak = P.idle;
   P.search = P.look;

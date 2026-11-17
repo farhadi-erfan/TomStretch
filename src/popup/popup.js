@@ -26,7 +26,7 @@
     box.addEventListener('change', () => save({ exercises: { ...s.exercises, [ex.id]: box.checked } }));
   }
 
-  const CHECKS = ['enabled', 'autoMinimize', 'restoreAfterBreak', 'cursorGag', 'buttonReactions', 'visionTerrain'];
+  const CHECKS = ['enabled', 'restoreAfterBreak', 'cursorGag', 'buttonReactions', 'visionTerrain'];
   const NUMBERS = ['intervalMinutes', 'snoozeMinutes', 'volume', 'opacity', 'size'];
 
   for (const id of CHECKS) $(id).addEventListener('change', () => save({ [id]: $(id).checked }));

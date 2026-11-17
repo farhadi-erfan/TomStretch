@@ -18,14 +18,14 @@ It ships in two forms that share the same pet code:
 | Chase | A chase across the floor, with a taunt and a miss. Anything in the way is hopped over or climbed; if it can't be, they double back. |
 | Pointer shake | Shake the pointer (the gesture that enlarges it on macOS) while they are on screen: both jump, cower, and bolt. |
 | Welcome back | After you have been away, the cat pops in with a greeting. |
-| Break | The cat gives up the chase and plants three small boards beside itself: Snooze, the exercise, and Start. Start: it demonstrates the exercise next to a timer board with a **Done** button; the mouse stays out of the way. Snooze, or no answer for 3 minutes: it leaves and comes back later. |
-| Minimize | During the exercise a red **MINIMIZE** button sits on the floor (or turn on *Minimize window automatically*). Desktop: the cat travels to your window's real minimize button, stomps it, and falls when the window vanishes; the timer starts only once that's done. The window comes back when the break ends. Extension: it stomps the red button and the Chrome window minimizes. |
+| Break | The chase ends with the cat out of breath on top of the window you are working in, on its minimize button (or hanging off the button, when the window fills the screen). It holds up a sign: **Take a break?** Yes / Snooze / No. Snooze, or no answer for 3 minutes: it comes back later. No: it skips this one. |
+| Yes | The cat stomps the window's real minimize button and drops when the window vanishes, pulls out the plan, and does two exercises with you, about 45 seconds in all, beside a timer board with a **Done** button. The timer starts only once the window is gone, and the window comes back when the break ends. The mouse stays out of the way. In the Chrome extension, where the browser's own button is out of reach, the cat stomps a red stand-in instead. |
 
 **They never float.** Everything they stand on or climb comes from a terrain map, and they move by running, jumping (in arcs), climbing vertical edges and falling. Walking is obstacle-aware: an edge in the way at leg height is hopped onto or over, climbed if it's too tall, or makes them turn back. A small route planner strings hops together: floor → ledge → ledge → window top.
 
 **They speak with signs.** Every line is on a little wooden sign held up in one paw; nothing hovers over their heads.
 
-Exercises: reach overhead, side stretch, shoulder rolls, stand up and move, look far away, loosen hands and wrists. Each can be switched off in settings.
+Exercises: chin tucks, neck side tilts and a chest opener (for "tech neck"), plus reach overhead, side stretch, shoulder rolls, stand up and move, look far away, loosen hands and wrists. Each break has one neck exercise and one other. Each can be switched off in settings.
 
 ## Installation
 
@@ -52,7 +52,7 @@ Exercises: reach overhead, side stretch, shoulder rolls, stand up and move, look
 2. The installer is not code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
 3. A cat appears in the notification area (click the `^` by the clock if it's hidden).
 
-The Windows version has had only light testing on real machines. Expected differences: no live window tracking (the pets use edges found on screen instead of window outlines), and during a break the cat stomps a red stand-in button that minimizes the foreground window.
+The Windows version has had only light testing on real machines. Expected differences: no live window tracking (the pets use edges found on screen instead of window outlines), and the minimize button's position comes from Windows (or, for apps that draw their own title bar, its usual place at the window's top right).
 
 **To quit:** the tray menu or the **Quit TomStretch** button at the bottom of the settings window. In Task Manager it is listed as **TomStretch**.
 
@@ -94,7 +94,7 @@ To build the installers yourself: `npm run dist:mac` on a Mac, `npm run dist:win
 
 A cat icon appears in the menu bar (system tray on Windows); there is no Dock icon. The menu has **Take a break now**, **Reach for the pointer** (runs the pointer gag on demand), snooze/pause, the main toggles, **Settings…** and **Quit**. Only one copy runs at a time.
 
-- The overlay is transparent and click-through: clicks, scrolling and typing go to whatever is underneath. It only catches the mouse over the break boards, the timer board and the red button.
+- The overlay is transparent and click-through: clicks, scrolling and typing go to whatever is underneath. It only catches the mouse over the break sign, the timer board and (extension) the red button.
 - It never takes keyboard focus, so the app you are working in stays frontmost — which is how it knows which window to minimize.
 - If you have not touched the keyboard or mouse for 90 seconds, a break that comes due waits for you.
 
@@ -108,9 +108,9 @@ A cat icon appears in the menu bar (system tray on Windows); there is no Dock ic
 
 macOS asks for each permission the first time it is needed (see Installation). Without Screen Recording the pets still use window tops and sides. Full-screen windows cannot be minimized. With Stage Manager on, a minimized window goes to the side strip; that works too.
 
-**Windows** minimizing is implemented (`user32.ShowWindow` via PowerShell) but has not been run; there is no window tracking there yet, so the pets rely on the screen scan and the cat uses the red button. **Linux** is not implemented.
+**Windows** finds the front window's minimize button through `user32` (via PowerShell) and minimizes that window; this has had little testing. There is no window tracking there yet, so the pets rely on the screen scan to find surfaces. **Linux** is not implemented.
 
-To check it boots without touching any windows: `DESKPET_SMOKE=/tmp/deskpet npm start` (the folder must exist) runs a break up to the exercise, saves screenshots and quits; it uses its own profile, so it can run beside a normal copy. Adding `DESKPET_LIVE=1` also sends the cat to minimize your front window for real and checks it comes back. `DESKPET_SMOKE_EVAL=/path/script.js` instead evaluates that script in the overlay, prints its result and saves a screenshot.
+To check it boots without touching any windows: `DESKPET_SMOKE=/tmp/deskpet npm start` (the folder must exist) runs a whole break (pretending to minimize), saves screenshots and quits; it uses its own profile, so it can run beside a normal copy. Adding `DESKPET_LIVE=1` also sends the cat to minimize your front window for real and checks it comes back. `DESKPET_SMOKE_EVAL=/path/script.js` instead evaluates that script in the overlay, prints its result and saves a screenshot.
 
 
 ## Chrome extension
@@ -171,7 +171,7 @@ src/
       director.js          runs one prioritised, cancellable routine at a time
       behaviors.js         the scenes: visits, wrong mouse, nap + fall, scare, welcome
     break/
-      break-sequence.js    the lunge, the choice boards, the exercise, the minimize trip
+      break-sequence.js    up to the minimize button, the question, the stomp, two exercises
     main.js              wires it all together
   popup/                 settings UI (also the desktop app's settings window)
 desktop/                 the Electron shell
@@ -220,7 +220,7 @@ Desktop app:
 - Primary display only.
 - The screen scan finds edges, not meaning: it cannot tell a button from a picture frame, lags a scroll by a couple of seconds, and sees whatever is on screen (including a dark line in a photo).
 - The wrong-mouse gag only starts while the pointer is in the lower half of the screen, where the mouse can reach it with one leap from the floor.
-- The cat's route to the minimize button uses the window's top edge; for a maximised window it shins up the edge of the screen instead.
+- The cat's route to the minimize button uses the window's top edge; for a maximised window it shins up the edge of the screen and hangs off the button.
 
 Chrome extension:
 

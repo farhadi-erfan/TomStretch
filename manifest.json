@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Desk Pet — Cat & Mouse Break Buddies",
+  "version": "0.1.0",
+  "description": "A cat and mouse who live in your browser, react to what you do, and nudge you to stretch and rest your eyes.",
+  "permissions": ["storage", "alarms"],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Desk Pet",
+    "default_popup": "src/popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "run_at": "document_idle",
+      "js": [
+        "src/shared/settings.js",
+        "src/shared/exercises.js",
+        "src/content/characters/cat.js",
+        "src/content/characters/mouse.js",
+        "src/content/animation/states.js",
+        "src/content/animation/rig.css.js",
+        "src/content/animation/character.js",
+        "src/content/animation/rive-renderer.js",
+        "src/content/stage/stage.css.js",
+        "src/content/stage/stage.js",
+        "src/content/stage/sfx.js",
+        "src/content/sensors.js",
+        "src/content/world/terrain.js",
+        "src/content/world/dom-terrain.js",
+        "src/content/world/locomotion.js",
+        "src/content/behaviors/director.js",
+        "src/content/behaviors/behaviors.js",
+        "src/content/break/break-sequence.js",
+        "src/content/main.js"
+      ]
+    }
+  ]
+}

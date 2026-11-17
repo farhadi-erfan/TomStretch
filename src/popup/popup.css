@@ -1,0 +1,33 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fffdf8; --fg: #2b2330; --muted: #6d6472; --line: #e6dfd3; --accent: #f2994a; --btn: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #221d26; --fg: #f3eef5; --muted: #a79fae; --line: #3a3340; --btn: #2e2733; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; width: 320px; padding: 12px 14px 14px; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; }
+h1 { font-size: 16px; margin: 0; }
+h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+section { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.status { margin: 0 0 8px; color: var(--muted); }
+.row { display: flex; gap: 6px; margin-bottom: 6px; }
+button { flex: 1; font: inherit; font-weight: 600; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--btn); color: var(--fg); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #2b2330; }
+button[hidden] { display: none; }
+.field { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
+.field input[type="number"] { width: 58px; }
+.field input[type="range"] { width: 150px; accent-color: var(--accent); }
+input, select { font: inherit; color: inherit; }
+input[type="number"], select { background: var(--btn); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+.check, .switch { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
+.switch { align-items: center; margin: 0; }
+.check small { display: block; color: var(--muted); }
+input[type="checkbox"] { accent-color: var(--accent); margin-top: 2px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.desktop-only { display: none; }
+body.desktop .desktop-only { display: flex; }
+body.desktop .ext-only { display: none; }
+body.desktop { width: auto; }

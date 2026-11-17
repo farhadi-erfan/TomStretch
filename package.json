@@ -1,0 +1,70 @@
+{
+  "name": "desk-pet",
+  "version": "0.1.0",
+  "description": "A cat and mouse who live on your desktop, climb your windows, and nudge you to take stretch breaks.",
+  "private": true,
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "rive": "node rive/build.js"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "@rive-app/canvas-single": "^2.51.0"
+  },
+  "author": "Erfan",
+  "build": {
+    "appId": "app.deskpet.desktop",
+    "productName": "Desk Pet",
+    "files": [
+      "desktop/**",
+      "src/**",
+      "assets/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "desktop/window-tracker.jxa.js"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "Desk-Pet-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.healthcare-fitness",
+      "identity": null,
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSAppleEventsUsageDescription": "Desk Pet minimizes the window you are working in when you ask it to during a break."
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Desk Pet"
+    }
+  }
+}

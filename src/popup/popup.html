@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Desk Pet</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <h1>Desk Pet</h1>
+  <label class="switch"><input type="checkbox" id="enabled"><span>Companion on</span></label>
+</header>
+
+<section>
+  <p id="status" class="status">…</p>
+  <div class="row">
+    <button id="breakNow" class="primary">Take a break now</button>
+    <button id="snooze">Snooze</button>
+  </div>
+  <div class="row">
+    <button data-pause="30">Pause 30 min</button>
+    <button data-pause="60">Pause 1 h</button>
+    <button id="resume" hidden>Resume</button>
+  </div>
+</section>
+
+<section>
+  <h2>Breaks</h2>
+  <label class="field">Remind me every
+    <span><input type="number" id="intervalMinutes" min="1" max="240" step="1"> min</span>
+  </label>
+  <label class="field">Snooze length
+    <span><input type="number" id="snoozeMinutes" min="1" max="60" step="1"> min</span>
+  </label>
+  <label class="check"><input type="checkbox" id="autoMinimize">
+    <span>Minimize the window automatically when I start a break
+      <small>Off by default. You can always press the red button yourself.</small></span>
+  </label>
+  <label class="check desktop-only"><input type="checkbox" id="restoreAfterBreak">
+    <span>Bring the window back when the break ends</span>
+  </label>
+</section>
+
+<section>
+  <h2>Exercises</h2>
+  <div id="exercises" class="grid"></div>
+</section>
+
+<section>
+  <h2>Behaviour</h2>
+  <label class="check"><input type="checkbox" id="cursorGag"><span>Chase my cursor now and then</span></label>
+  <label class="check ext-only"><input type="checkbox" id="buttonReactions"><span>React to buttons on the page</span></label>
+  <label class="check desktop-only"><input type="checkbox" id="visionTerrain">
+    <span>Climb on things inside windows
+      <small>Looks at the screen to find ledges. Needs Screen Recording permission; nothing is saved or sent.</small></span>
+  </label>
+</section>
+
+<section>
+  <h2>Look &amp; sound</h2>
+  <label class="field">Sound volume <input type="range" id="volume" min="0" max="1" step="0.05"></label>
+  <label class="field">Visibility <input type="range" id="opacity" min="0.2" max="1" step="0.05"></label>
+  <label class="field">Size
+    <select id="size"><option value="0.75">Small</option><option value="1">Medium</option><option value="1.3">Large</option></select>
+  </label>
+</section>
+
+<script src="../../desktop/chrome-shim.js"></script>
+<script src="../shared/settings.js"></script>
+<script src="../shared/exercises.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

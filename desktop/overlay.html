@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'">
+<title>Desk Pet</title>
+<style>html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }</style>
+</head>
+<body>
+<script src="chrome-shim.js"></script>
+<!-- Rive runtime with its WebAssembly built in (no network). Only used if assets/rive/*.riv exist. -->
+<script src="../node_modules/@rive-app/canvas-single/rive.js"></script>
+<!-- Same scripts, same order, as content_scripts in manifest.json -->
+<script src="../src/shared/settings.js"></script>
+<script src="../src/shared/exercises.js"></script>
+<script src="../src/content/characters/cat.js"></script>
+<script src="../src/content/characters/mouse.js"></script>
+<script src="../src/content/animation/states.js"></script>
+<script src="../src/content/animation/rig.css.js"></script>
+<script src="../src/content/animation/character.js"></script>
+<script src="../src/content/animation/rive-renderer.js"></script>
+<script src="../src/content/stage/stage.css.js"></script>
+<script src="../src/content/stage/stage.js"></script>
+<script src="../src/content/stage/sfx.js"></script>
+<script src="../src/content/sensors.js"></script>
+<script src="../src/content/world/terrain.js"></script>
+<script src="../src/content/world/dom-terrain.js"></script>
+<script src="../src/content/world/locomotion.js"></script>
+<script src="../src/content/behaviors/director.js"></script>
+<script src="../src/content/behaviors/behaviors.js"></script>
+<script src="../src/content/break/break-sequence.js"></script>
+<script src="../src/content/main.js"></script>
+<script src="overlay-bridge.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# Desk Pet — cat & mouse break buddies
+# TomStretch — cat & mouse break buddies
 
 An animated cat and mouse who drop in on your screen. They are not there all the time: every minute or two they tear through mid-chase, nap on top of a window, or go after your pointer the way a pet would — and every 30 minutes the cat asks you to take a stretch break.
 

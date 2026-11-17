@@ -46,7 +46,7 @@
       if (this.running) return;
       this.running = true;
       for (const c of this.chars) c.hide(); // off-stage until a scene brings them on
-      this.scheduleVisit(4500); // say hello soon after launch
+      this.scheduleVisit(2500); // say hello soon after launch
     }
 
     stop() {
@@ -102,6 +102,11 @@
     }
 
     async visit(s) {
+      // Every launch opens with the cat pouncing on the user's pointer.
+      if (this.visits === 0 && this.w.settings.cursorGag && this.w.sensors.cursor.seen) {
+        this.visits++;
+        return this.hello(s);
+      }
       const options = [this.chaseThrough];
       if (this.napSpot()) options.push(this.napVisit, this.napVisit);
       if (this.w.settings.cursorGag && this.cursorReachable() && Date.now() - this.lastGag > 60000) {
@@ -331,6 +336,53 @@
       await getaway;
       s.check();
       await loco.exit(s, cat, away, { speed: v });
+    }
+
+    // ---- scene: hello (the first thing after launch) ----------------------
+
+    // The cat bursts in and pounces on the user's pointer: up whatever it
+    // takes to get within reach, then a leap and a hug. If the pointer is out
+    // of reach it jumps for it anyway, falls short, and shrugs it off.
+    async hello(s) {
+      const { cat, sensors, loco, sfx } = this.w;
+      const cur = sensors.cursor;
+      this.lastGag = Date.now();
+      const side = cur.x > this.vw / 2 ? -1 : 1; // come in from the far side
+      const v = Math.max(560, this.vw / 3.2);
+      loco.enter(cat, side);
+      sfx.play('chime');
+
+      const there = await this.approachPointer(s, cat, { speed: v });
+      cat.face(cur.x >= cat.x ? 1 : -1);
+      cat.setState('crouch');
+      await s.wait(380);
+      cat.setState('pounce');
+      sfx.play('boing');
+
+      if (there) {
+        const rise = this.gripY() - cat.y;
+        await s.move(cat, cur.x, this.gripY(), { duration: clamp(280 + rise * 0.4, 300, 600), arc: 30, ease: 'out' });
+        cat.clinging = false;
+        this.holding = true; // hangs on wherever the pointer goes
+        cat.setState('grab');
+        cat.say('Hi!', 1600);
+        await s.wait(2200);
+        this.holding = false;
+        await loco.fall(s, cat);
+        cat.setState('cheer');
+        await s.wait(900);
+      } else {
+        // Can't get up there: a hopeful jump straight at it, and down again.
+        const top = Math.min(this.vh - cur.y - cat.h * 0.6, cat.y + LEAP);
+        await s.move(cat, cat.x + clamp(cur.x - cat.x, -120, 120), Math.max(cat.y, top), { duration: 380, ease: 'out' });
+        await loco.fall(s, cat);
+        cat.face(cur.x >= cat.x ? 1 : -1);
+        cat.setState('look');
+        cat.say('Hi!', 1600);
+        await s.wait(1800);
+      }
+      s.check();
+      await loco.exit(s, cat, cur.x > cat.x ? -1 : 1, { speed: v * 0.8 });
     }
 
     // ---- scene: a nap on top of something ----------------------------------

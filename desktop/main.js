@@ -48,8 +48,7 @@ function loadStore() {
 }
 
 function getSettings() {
-  const s = store.settings || {};
-  return { ...DEFAULTS, ...s, exercises: { ...DEFAULTS.exercises, ...(s.exercises || {}) } };
+  return globalThis.DeskPet.settings.merge(store.settings); // defaults filled in, bad numbers repaired
 }
 
 function setStore(obj) {
@@ -455,7 +454,7 @@ app.whenReady().then(() => {
   scanSoon(1500);
   schedule();
   setInterval(tick, 1000);
-  if (process.env.DESKPET_SMOKE) require('./smoke')(overlay, () => triggerBreak(true), () => ({ located, minimizedTarget, windows: windowRects.length, vision: vision.permission() }));
+  if (process.env.DESKPET_SMOKE) require('./smoke')(overlay, () => triggerBreak(true), () => ({ located, minimizedTarget, windows: windowRects.length, vision: vision.permission() }), async () => (await openSettings(), settingsWin));
 });
 
 app.on('second-instance', openSettings);

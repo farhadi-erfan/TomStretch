@@ -8,7 +8,7 @@ const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-module.exports = function smoke(overlay, startBreak, probe) {
+module.exports = function smoke(overlay, startBreak, probe, settingsWindow) {
   const dir = process.env.DESKPET_SMOKE;
   const live = !!process.env.DESKPET_LIVE;
   const wc = overlay.webContents;
@@ -25,12 +25,25 @@ module.exports = function smoke(overlay, startBreak, probe) {
   const at = (ms, fn) => setTimeout(() => fn().catch((e) => console.log('[smoke] error', e)), ms);
   const log = async (label) => console.log(`[smoke] ${label}`, await state(), JSON.stringify(probe()));
 
+  // DESKPET_SMOKE_POPUP_EVAL=/path/to/script.js: run this in the settings
+  // window first (it opens it), print the result, then go on.
+  const popupEval = async () => {
+    if (!process.env.DESKPET_SMOKE_POPUP_EVAL) return;
+    // Pets off stage while the settings change (stop hides them).
+    await js(`(() => { const b = DeskPet.world.behaviors; b.stop(); b.start(); clearTimeout(b.visitTimer); })()`);
+    const win = await settingsWindow();
+    await new Promise((r) => (win.webContents.isLoading() ? win.webContents.once('did-finish-load', r) : r()));
+    await new Promise((r) => setTimeout(r, 500));
+    console.log('[popup]', await win.webContents.executeJavaScript(fs.readFileSync(process.env.DESKPET_SMOKE_POPUP_EVAL, 'utf8')));
+  };
+
   // DESKPET_SMOKE_EVAL=/path/to/script.js: instead of the break run, evaluate
   // that script in the overlay (it should return a promise of a string),
   // print the result, save eval.png and quit.
   if (process.env.DESKPET_SMOKE_EVAL) {
     at(3000, async () => {
       await js(`clearTimeout(DeskPet.world.behaviors.visitTimer)`);
+      await popupEval();
       console.log('[eval]', await js(fs.readFileSync(process.env.DESKPET_SMOKE_EVAL, 'utf8')));
       await shot('eval.png');
       app.quit();

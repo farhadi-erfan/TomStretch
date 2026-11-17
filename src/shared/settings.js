@@ -29,9 +29,23 @@
 
   const area = () => chrome.storage.sync || chrome.storage.local;
 
+  // Allowed range for each number; anything else (missing, null, NaN, out of
+  // range) falls back to the default, so a bad saved value can't break the pets.
+  const RANGES = {
+    intervalMinutes: [1, 240],
+    snoozeMinutes: [1, 120],
+    volume: [0, 1],
+    opacity: [0.2, 1],
+    size: [0.5, 2],
+  };
+
   function merge(stored) {
     const s = { ...DEFAULTS, ...(stored || {}) };
     s.exercises = { ...DEFAULTS.exercises, ...((stored && stored.exercises) || {}) };
+    for (const [key, [lo, hi]] of Object.entries(RANGES)) {
+      const v = Number(s[key]);
+      s[key] = s[key] !== null && Number.isFinite(v) && v >= lo && v <= hi ? v : DEFAULTS[key];
+    }
     return s;
   }
 
@@ -57,5 +71,5 @@
     });
   }
 
-  DP.settings = { DEFAULTS, load, save, onChange };
+  DP.settings = { DEFAULTS, merge, load, save, onChange };
 })(globalThis);

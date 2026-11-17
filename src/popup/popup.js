@@ -35,8 +35,10 @@
       const el = $(id);
       let v = Number(el.value);
       if (!Number.isFinite(v)) return render();
-      if (el.min !== '') v = Math.max(Number(el.min), v);
-      if (el.max !== '') v = Math.min(Number(el.max), v);
+      // Only inputs have min/max (a <select> has neither: clamping against
+      // undefined gave NaN, saved as null, which shrank the pets to nothing).
+      if (el.min) v = Math.max(Number(el.min), v);
+      if (el.max) v = Math.min(Number(el.max), v);
       save({ [id]: v });
     });
   }

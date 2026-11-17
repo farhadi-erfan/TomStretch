@@ -104,6 +104,7 @@
     show() {
       this.hidden = false;
       this.el.classList.remove('dp-hidden');
+      if (this.renderer.refresh) this.renderer.refresh();
     }
     hide() {
       this.hidden = true;

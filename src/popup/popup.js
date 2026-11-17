@@ -56,6 +56,7 @@
     btn.addEventListener('click', () => save({ pausedUntil: Date.now() + Number(btn.dataset.pause) * 60000 }));
   }
   $('resume').addEventListener('click', () => save({ pausedUntil: 0 }));
+  if ($('quit')) $('quit').addEventListener('click', () => send({ type: 'QUIT' }));
 
   const clock = (t) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 

@@ -1,6 +1,6 @@
 {
   "name": "desk-pet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A cat and mouse who live on your desktop, climb your windows, and nudge you to take stretch breaks.",
   "private": true,
   "main": "desktop/main.js",
@@ -56,15 +56,25 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
-      ]
+      ],
+      "legalTrademarks": "Desk Pet"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Desk Pet"
+      "shortcutName": "Desk Pet",
+      "include": "build/installer.nsh",
+      "deleteAppDataOnUninstall": true,
+      "uninstallDisplayName": "Desk Pet",
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    },
+    "extraMetadata": {
+      "description": "Desk Pet"
     }
   }
 }

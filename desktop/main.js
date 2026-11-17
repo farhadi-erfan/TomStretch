@@ -4,7 +4,7 @@
 // break timer, settings storage and window control. The pets themselves are
 // the same code as the extension's content script (src/content), running in a
 // transparent, click-through, always-on-top overlay that covers the screen.
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, powerMonitor } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, powerMonitor, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -25,6 +25,19 @@ let tray = null;
 
 let store = {};
 const storeFile = () => path.join(app.getPath('userData'), 'store.json');
+
+// A plain-text log of warnings and errors (ours and the overlay's), so a
+// problem on someone else's machine can be sent over. Kept small.
+const logFile = () => path.join(app.getPath('userData'), 'deskpet.log');
+function log(...parts) {
+  try {
+    const file = logFile();
+    if (fs.existsSync(file) && fs.statSync(file).size > 512 * 1024) fs.renameSync(file, file + '.old');
+    fs.appendFileSync(file, `${new Date().toISOString()} ${parts.join(' ')}\n`);
+  } catch (e) {
+    /* logging must never break the app */
+  }
+}
 
 function loadStore() {
   try {
@@ -143,6 +156,10 @@ const handlers = {
   async TRIGGER_BREAK_NOW() {
     return triggerBreak(true);
   },
+  QUIT() {
+    setTimeout(() => app.quit(), 50); // let the reply go back first
+    return true;
+  },
   async GET_STATUS() {
     const times = [nextBreakAt, snoozeAt].filter(Boolean);
     return { nextBreakAt: times.length ? Math.min(...times) : null };
@@ -152,6 +169,7 @@ const handlers = {
 ipcMain.handle('message', (e, msg) => (msg && handlers[msg.type] ? handlers[msg.type](msg) : null));
 // Character art files (assets/rive/*.riv). Only that folder, only by file name.
 ipcMain.handle('read-asset', (e, name) => {
+  if (getSettings().simpleArt) return null; // the renderer then uses the SVG characters
   try {
     return fs.readFileSync(path.join(__dirname, '..', 'assets', 'rive', path.basename(String(name))));
   } catch (err) {
@@ -283,6 +301,13 @@ function createOverlay() {
   overlay.setIgnoreMouseEvents(true);
   overlay.loadFile(path.join(__dirname, 'overlay.html'));
   overlay.once('ready-to-show', () => overlay.showInactive());
+  // Overlay warnings, errors and [DeskPet] notes go to the log file.
+  overlay.webContents.on('console-message', (e, level, message, line, source) => {
+    if (level >= 2 || /\[DeskPet\]/.test(message)) log('overlay', message, source ? `(${path.basename(source)}:${line})` : '');
+  });
+  overlay.webContents.on('render-process-gone', (e, d) => log('overlay crashed:', d.reason));
+  app.on('child-process-gone', (e, d) => log('process gone:', d.type, d.reason));
+  log('start', app.getVersion(), process.platform, process.arch, `gpu=${JSON.stringify(app.getGPUFeatureStatus())}`, `scale=${screen.getPrimaryDisplay().scaleFactor}`);
 
   const refit = () => overlay.setBounds(screen.getPrimaryDisplay().workArea);
   screen.on('display-metrics-changed', refit);
@@ -339,8 +364,18 @@ function buildTrayMenu() {
       { label: 'Show companion', type: 'checkbox', checked: s.enabled, click: (item) => saveSettings({ enabled: item.checked }) },
       { label: 'Minimize window automatically', type: 'checkbox', checked: s.autoMinimize, click: (item) => saveSettings({ autoMinimize: item.checked }) },
       { label: 'Climb on things inside windows', type: 'checkbox', checked: s.visionTerrain, click: (item) => saveSettings({ visionTerrain: item.checked }) },
+      {
+        label: 'Simple art (if a pet is invisible)',
+        type: 'checkbox',
+        checked: s.simpleArt,
+        click: (item) => {
+          saveSettings({ simpleArt: item.checked });
+          if (overlay) overlay.webContents.reload();
+        },
+      },
       { label: 'Settings…', click: openSettings },
       { type: 'separator' },
+      { label: 'Show log file', click: () => shell.showItemInFolder(logFile()) },
       { label: 'Quit Desk Pet', click: () => app.quit() },
     ])
   );
@@ -359,8 +394,42 @@ function createTray() {
 if (process.env.DESKPET_SMOKE) app.setPath('userData', path.join(process.env.DESKPET_SMOKE, 'profile'));
 if (!app.requestSingleInstanceLock()) app.quit();
 
+// Anything that goes wrong in the main process goes to the log, and the user
+// gets told once instead of the app vanishing silently.
+let errorShown = false;
+function fatal(where, err) {
+  log(where, err && err.stack ? err.stack : String(err));
+  if (errorShown || !app.isReady()) return;
+  errorShown = true;
+  dialog.showErrorBox('Desk Pet ran into a problem', `${err && err.message ? err.message : err}\n\nDetails are in ${logFile()}`);
+}
+process.on('uncaughtException', (e) => fatal('uncaught exception:', e));
+process.on('unhandledRejection', (e) => fatal('unhandled rejection:', e));
+
+// Safe graphics: some setups (virtual machines, older or unusual graphics
+// drivers) can't draw a transparent always-on-top window with the GPU. If the
+// GPU process dies, restart once with hardware acceleration off, and stay
+// that way (delete safe-graphics in the data folder to try the GPU again).
+const safeGraphicsFile = () => path.join(app.getPath('userData'), 'safe-graphics');
+const safeGraphics = process.argv.includes('--safe-graphics') || fs.existsSync(safeGraphicsFile());
+if (safeGraphics) app.disableHardwareAcceleration();
+app.on('child-process-gone', (e, d) => {
+  if (d.type !== 'GPU' || safeGraphics || d.reason === 'clean-exit') return;
+  log('GPU process gone:', d.reason, '- restarting with safe graphics');
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(safeGraphicsFile(), new Date().toISOString());
+  } catch (err) {
+    /* still restart with the flag below */
+  }
+  app.relaunch({ args: process.argv.slice(1).concat('--safe-graphics') });
+  app.exit(0);
+});
+
 app.whenReady().then(() => {
+  log('ready', app.getVersion(), process.platform, process.arch, safeGraphics ? 'safe-graphics' : 'gpu');
   if (app.dock) app.dock.hide(); // menu-bar app: no Dock icon
+  if (process.platform === 'win32') app.setAppUserModelId('app.deskpet.desktop'); // groups and names it in Windows
   loadStore();
   createOverlay();
   createTray();

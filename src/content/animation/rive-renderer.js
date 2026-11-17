@@ -22,6 +22,7 @@
   DP.RIVE_STATE_IDS = Object.keys(DP.STATES);
 
   const MAX_CANVAS = 2048; // px on the long side, however far the cat zooms
+  const LOAD_TIMEOUT = 8000; // ms for a .riv to load before giving up on it
 
   // Both ways of driving a file are supported; don't nag about the older one.
   if (g.rive && g.rive.Rive) g.rive.Rive.suppressDeprecationWarnings = ['state-machine-inputs'];
@@ -66,8 +67,10 @@
         autoBind: true, // bind the default view model, if the file has one
         layout: new rive.Layout({ fit: rive.Fit.Contain, alignment: rive.Alignment.BottomCenter }),
         onLoad: () => {
+          if (this.fb) return; // already switched to the simple drawing
+          clearTimeout(this._loadTimer);
           this.loaded = true;
-          this.rive.resizeDrawingSurfaceToCanvas();
+          this._resize(this.zoom || 1);
           this.vmi = this.rive.viewModelInstance || null;
           try {
             for (const input of this.rive.stateMachineInputs(cfg.stateMachine) || []) this.inputs[input.name] = input;
@@ -76,12 +79,66 @@
           }
           for (const name of Object.keys(this.values)) this._set(name, this.values[name]);
         },
-        onLoadError: (e) => console.warn('[DeskPet] could not load', cfg.file, e),
+        onLoadError: (e) => this._fallBack('could not load ' + cfg.file + ': ' + (e && (e.data || e.type || e))),
       });
+      // A file that never finishes loading, or a canvas that stays empty while
+      // the pet is on screen (seen on some Windows graphics setups), means
+      // the pet would be invisible: switch to the SVG drawing instead.
+      this._loadTimer = setTimeout(() => this.loaded || this._fallBack('load timed out'), LOAD_TIMEOUT);
+      this._watchBlank();
+    }
+
+    _watchBlank() {
+      let shown = 0;
+      let checks = 0;
+      const tick = () => {
+        if (this.fb || checks >= 20) return;
+        const r = this.el.getBoundingClientRect();
+        const onScreen = r.width > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight && getComputedStyle(this.el).visibility !== 'hidden';
+        shown = this.loaded && onScreen ? shown + 1 : 0;
+        if (shown >= 2) {
+          // Rive draws with a 2D context here; null means it chose WebGL and
+          // its pixels can't be read this way, so trust it.
+          checks++;
+          let ctx = null;
+          try {
+            ctx = this.canvas.getContext('2d');
+          } catch (e) {
+            ctx = null;
+          }
+          if (!ctx) return;
+          const { width: w, height: h } = this.canvas;
+          const data = ctx.getImageData(0, 0, w, h).data;
+          for (let i = 3; i < data.length; i += 16) if (data[i]) return; // something drawn: fine, stop watching
+          if (checks >= 2) return this._fallBack('canvas stayed empty');
+        }
+        this._blankTimer = setTimeout(tick, 1500);
+      };
+      this._blankTimer = setTimeout(tick, 1500);
+    }
+
+    _fallBack(why) {
+      if (this.fb) return;
+      console.warn('[DeskPet] Rive art not shown for', this.def.rive.file, '-', why, '- using the simple drawing');
+      clearTimeout(this._loadTimer);
+      clearTimeout(this._blankTimer);
+      try {
+        if (this.rive) this.rive.cleanup();
+      } catch (e) {
+        /* already gone */
+      }
+      this.canvas.remove();
+      this.fb = new DP.SvgRigRenderer(this.def);
+      this.fb.mount(this.el);
+      const v = this.values;
+      if (this._state) this.fb.setState(this._state, DP.STATES[this._state]);
+      if ('dir' in v) this.fb.setFacing(v.dir);
+      if ('lookX' in v) this.fb.lookAt(v.lookX / 100, v.lookY / 100);
     }
 
     _set(name, value) {
       this.values[name] = value;
+      if (this.fb) return;
       // Data-bound property first, then a state machine input of that name.
       let target = null;
       if (this.vmi) {
@@ -95,27 +152,48 @@
       if (target) target.value = value;
     }
 
-    // Keep the drawing sharp when the character is scaled up (the break lunge).
+    // Size the drawing surface for the character's current scale, from our own
+    // numbers. (Rive's resizeDrawingSurfaceToCanvas measures the canvas on
+    // screen instead, which is 0x0 while a pet is off stage: a size change
+    // made then left the pet invisible on Windows.)
     _resize(zoom) {
+      if (this.fb) return;
+      this.zoom = zoom;
       const dpr = g.devicePixelRatio || 1;
       const f = this.def.rive.frame;
       // CSS size of the canvas at zoom 1.
       const w = f ? (this.def.width * f.width) / f.box[0] : this.def.width;
       const h = f ? (this.def.height * f.height) / f.box[1] : this.def.height;
       const k = Math.min(zoom * dpr, MAX_CANVAS / Math.max(w, h));
-      this.canvas.width = Math.round(w * k);
-      this.canvas.height = Math.round(h * k);
-      if (this.loaded) this.rive.resizeDrawingSurfaceToCanvas();
+      const cw = Math.max(1, Math.round(w * k));
+      const ch = Math.max(1, Math.round(h * k));
+      if (this.canvas.width !== cw) this.canvas.width = cw;
+      if (this.canvas.height !== ch) this.canvas.height = ch;
+      if (!this.loaded) return;
+      this.rive.devicePixelRatioUsed = k / zoom;
+      this.rive.resizeToCanvas();
+      this.rive.drawFrame();
     }
 
-    setState(name) {
+    // The pet just came on stage: Rive may have re-measured the canvas while
+    // it was hidden or appearing, so put our size back once it is laid out.
+    refresh() {
+      if (this.fb || !this.loaded) return;
+      requestAnimationFrame(() => this._resize(this.zoom || 1));
+    }
+
+    setState(name, meta) {
+      this._state = name;
+      if (this.fb) return this.fb.setState(name, meta || DP.STATES[name]);
       this.el.dataset.state = name; // handy for debugging and tests
       this._set('state', DP.RIVE_STATE_IDS.indexOf(name));
     }
     setFacing(dir) {
+      if (this.fb) this.fb.setFacing(dir);
       this._set('dir', dir);
     }
     lookAt(lx, ly) {
+      if (this.fb) this.fb.lookAt(lx, ly);
       this._set('lookX', lx * 100);
       this._set('lookY', ly * 100);
     }

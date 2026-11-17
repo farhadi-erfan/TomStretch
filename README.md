@@ -48,11 +48,21 @@ Exercises: reach overhead, side stretch, shoulder rolls, stand up and move, look
 
 ### Windows 10/11
 
-1. Download `Desk-Pet-…-win-x64.exe` from the [Releases](../../releases) page and run it.
+1. Download the installer from the [Releases](../../releases) page and run it: `Desk-Pet-…-win.exe` works on any Windows PC. The smaller `-win-x64.exe` (Intel/AMD) and `-win-arm64.exe` (ARM, including Windows in Parallels on an Apple-silicon Mac) each hold one version.
 2. The installer is not code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
 3. A cat appears in the notification area (click the `^` by the clock if it's hidden).
 
-The Windows version has not been tested on a real Windows machine yet. Expected differences: no live window tracking (the pets use edges found on screen instead of window outlines), and during a break the cat stomps a red stand-in button that minimizes the foreground window.
+The Windows version has had only light testing on real machines. Expected differences: no live window tracking (the pets use edges found on screen instead of window outlines), and during a break the cat stomps a red stand-in button that minimizes the foreground window.
+
+**To quit:** the tray menu or the **Quit Desk Pet** button at the bottom of the settings window. In Task Manager it is listed as **Desk Pet**.
+
+**To uninstall:** Start menu → **Uninstall Desk Pet**, or Settings → Apps → Desk Pet → Uninstall. This stops the app and removes it along with its settings, logs and caches. Installing a newer version keeps your settings.
+
+### If something looks wrong
+
+- **A pet is invisible but its signs and sounds work:** tick **Simple art** in the tray menu. The pets switch to the built-in drawings, which don't depend on the graphics setup. The app also switches by itself when it detects the Rive art isn't drawing.
+- **Nothing appears at all (often in a virtual machine):** if the graphics driver crashes, Desk Pet restarts once with GPU drawing turned off and keeps it off. You can force that from the start by launching it with `--safe-graphics`. Startup errors appear in a dialog and in the log.
+- **To report a problem:** choose **Show log file** in the tray menu and send `deskpet.log`. It holds warnings and errors only, plus the system's graphics and display-scale details; it never includes screen contents.
 
 ### From source (either system)
 

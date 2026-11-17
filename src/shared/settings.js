@@ -24,6 +24,7 @@
     opacity: 1, // 0.2..1
     size: 1, // character scale
     visionTerrain: true, // desktop: look at the screen to find ledges inside windows
+    simpleArt: false, // desktop: draw the built-in SVG characters instead of the Rive files
   };
 
   const area = () => chrome.storage.sync || chrome.storage.local;

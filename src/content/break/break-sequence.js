@@ -49,7 +49,7 @@
       this.boards = document.createElement('div');
       this.boards.className = 'dp-boards';
       this.boards.setAttribute('role', 'dialog');
-      this.boards.setAttribute('aria-label', 'Desk Pet break');
+      this.boards.setAttribute('aria-label', 'TomStretch break');
       this.boards.innerHTML = `
         <button class="dp-board dp-board-btn" data-act="snooze"></button>
         <div class="dp-board dp-board-info">

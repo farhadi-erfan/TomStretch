@@ -1,6 +1,6 @@
 {
-  "name": "desk-pet",
-  "version": "0.1.1",
+  "name": "tomstretch",
+  "version": "0.2.0",
   "description": "A cat and mouse who live on your desktop, climb your windows, and nudge you to take stretch breaks.",
   "private": true,
   "main": "desktop/main.js",
@@ -20,7 +20,7 @@
   "author": "Erfan",
   "build": {
     "appId": "app.deskpet.desktop",
-    "productName": "Desk Pet",
+    "productName": "TomStretch",
     "files": [
       "desktop/**",
       "src/**",
@@ -33,7 +33,7 @@
     "directories": {
       "output": "dist"
     },
-    "artifactName": "Desk-Pet-${version}-${os}-${arch}.${ext}",
+    "artifactName": "TomStretch-${version}-${os}-${arch}.${ext}",
     "mac": {
       "target": [
         {
@@ -48,7 +48,7 @@
       "identity": null,
       "extendInfo": {
         "LSUIElement": true,
-        "NSAppleEventsUsageDescription": "Desk Pet minimizes the window you are working in when you ask it to during a break."
+        "NSAppleEventsUsageDescription": "TomStretch minimizes the window you are working in when you ask it to during a break."
       }
     },
     "win": {
@@ -61,20 +61,20 @@
           ]
         }
       ],
-      "legalTrademarks": "Desk Pet"
+      "legalTrademarks": "TomStretch"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Desk Pet",
+      "shortcutName": "TomStretch",
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": true,
-      "uninstallDisplayName": "Desk Pet",
+      "uninstallDisplayName": "TomStretch",
       "createStartMenuShortcut": true,
       "runAfterFinish": true
     },
     "extraMetadata": {
-      "description": "Desk Pet"
+      "description": "TomStretch"
     }
   }
 }

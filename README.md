@@ -32,48 +32,50 @@ Exercises: reach overhead, side stretch, shoulder rolls, stand up and move, look
 ### macOS (Apple silicon or Intel)
 
 1. Download the `.dmg` for your Mac from the [Releases](../../releases) page: `arm64` for Apple silicon (M1 and later), `x64` for Intel.
-2. Open it and drag **Desk Pet** into **Applications**.
+2. Open it and drag **TomStretch** into **Applications**.
 3. The app is not signed with an Apple developer certificate yet, so macOS blocks the first launch (it may say the app "is damaged"). Clear the download flag once:
 
    ```bash
-   xattr -dr com.apple.quarantine "/Applications/Desk Pet.app"
+   xattr -dr com.apple.quarantine "/Applications/TomStretch.app"
    ```
 
    Then open it normally. (Alternatively: try to open it, then *System Settings → Privacy & Security → Open Anyway*.)
-4. A cat appears in the menu bar. macOS asks for permissions the first time each feature is used; grant them to **Desk Pet** in *System Settings → Privacy & Security*:
+4. A cat appears in the menu bar. macOS asks for permissions the first time each feature is used; grant them to **TomStretch** in *System Settings → Privacy & Security*:
    - **Screen Recording** — to find edges inside windows to climb on (optional);
    - **Accessibility**, and control of **System Events** — to press a window's minimize button during a break (optional).
 
-   After granting Screen Recording, quit Desk Pet from its menu and open it again.
+   After granting Screen Recording, quit TomStretch from its menu and open it again.
 
 ### Windows 10/11
 
-1. Download the installer from the [Releases](../../releases) page and run it: `Desk-Pet-…-win.exe` works on any Windows PC. The smaller `-win-x64.exe` (Intel/AMD) and `-win-arm64.exe` (ARM, including Windows in Parallels on an Apple-silicon Mac) each hold one version.
+1. Download the installer from the [Releases](../../releases) page and run it: `TomStretch-…-win.exe` works on any Windows PC. The smaller `-win-x64.exe` (Intel/AMD) and `-win-arm64.exe` (ARM, including Windows in Parallels on an Apple-silicon Mac) each hold one version.
 2. The installer is not code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
 3. A cat appears in the notification area (click the `^` by the clock if it's hidden).
 
 The Windows version has had only light testing on real machines. Expected differences: no live window tracking (the pets use edges found on screen instead of window outlines), and during a break the cat stomps a red stand-in button that minimizes the foreground window.
 
-**To quit:** the tray menu or the **Quit Desk Pet** button at the bottom of the settings window. In Task Manager it is listed as **Desk Pet**.
+**To quit:** the tray menu or the **Quit TomStretch** button at the bottom of the settings window. In Task Manager it is listed as **TomStretch**.
 
-**To uninstall:** Start menu → **Uninstall Desk Pet**, or Settings → Apps → Desk Pet → Uninstall. This stops the app and removes it along with its settings, logs and caches. Installing a newer version keeps your settings.
+**To uninstall:** Start menu → **Uninstall TomStretch**, or Settings → Apps → TomStretch → Uninstall. This stops the app and removes it along with its settings, logs and caches. Installing a newer version keeps your settings.
+
+**Coming from Desk Pet (0.1.x)?** The app was renamed to TomStretch in 0.2.0, and your settings carry over. On Windows the installer replaces Desk Pet. On macOS, quit Desk Pet, delete `Desk Pet.app` from Applications, and grant the permissions again to TomStretch.
 
 ### If something looks wrong
 
 - **A pet is invisible but its signs and sounds work:** tick **Simple art** in the tray menu. The pets switch to the built-in drawings, which don't depend on the graphics setup. The app also switches by itself when it detects the Rive art isn't drawing.
-- **Nothing appears at all (often in a virtual machine):** if the graphics driver crashes, Desk Pet restarts once with GPU drawing turned off and keeps it off. You can force that from the start by launching it with `--safe-graphics`. Startup errors appear in a dialog and in the log.
-- **To report a problem:** choose **Show log file** in the tray menu and send `deskpet.log`. It holds warnings and errors only, plus the system's graphics and display-scale details; it never includes screen contents.
+- **Nothing appears at all (often in a virtual machine):** if the graphics driver crashes, TomStretch restarts once with GPU drawing turned off and keeps it off. You can force that from the start by launching it with `--safe-graphics`. Startup errors appear in a dialog and in the log.
+- **To report a problem:** choose **Show log file** in the tray menu and send `tomstretch.log`. It holds warnings and errors only, plus the system's graphics and display-scale details; it never includes screen contents.
 
 ### From source (either system)
 
 Needs [Node.js](https://nodejs.org) 20 or later.
 
 ```bash
-git clone https://github.com/farhadi-erfan/desk-pet.git
+git clone https://github.com/farhadi-erfan/TomStretch.git
 ```
 
 ```bash
-cd desk-pet
+cd TomStretch
 ```
 
 ```bash
@@ -84,7 +86,7 @@ npm install
 npm start
 ```
 
-Run this way on macOS, the permission entries are named **Electron** (or your terminal) rather than Desk Pet.
+Run this way on macOS, the permission entries are named **Electron** (or your terminal) rather than TomStretch.
 
 To build the installers yourself: `npm run dist:mac` on a Mac, `npm run dist:win` on Windows (output in `dist/`). Pushing a tag such as `v0.2.0` builds both on GitHub and attaches them to a release (`.github/workflows/release.yml`).
 

@@ -2,7 +2,7 @@
 // working in (the main window of the frontmost app), whichever app that is.
 //
 // macOS: System Events via osascript. Needs the Accessibility permission, and
-//        macOS asks once whether Desk Pet may control "System Events".
+//        macOS asks once whether TomStretch may control "System Events".
 // Windows: no button lookup; minimizes the foreground window with user32
 //        ShowWindow via PowerShell. (Written but not yet tested.)
 const { execFile } = require('child_process');

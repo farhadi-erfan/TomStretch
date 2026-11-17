@@ -2,7 +2,7 @@
 // on-screen app windows as one JSON line whenever they change.
 //   [[windowId, ownerPid, x, y, width, height], ...]   front-most first
 // Only geometry is read (no titles, no pixels), which needs no permission.
-// argv[0] = pid to ignore (Desk Pet's own windows).
+// argv[0] = pid to ignore (TomStretch's own windows).
 ObjC.import('CoreGraphics');
 ObjC.import('Foundation');
 

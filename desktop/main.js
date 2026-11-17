@@ -1,4 +1,4 @@
-// Desk Pet desktop app (Electron main process).
+// TomStretch desktop app (Electron main process).
 //
 // Plays the role the service worker plays in the Chrome extension: owns the
 // break timer, settings storage and window control. The pets themselves are
@@ -28,7 +28,7 @@ const storeFile = () => path.join(app.getPath('userData'), 'store.json');
 
 // A plain-text log of warnings and errors (ours and the overlay's), so a
 // problem on someone else's machine can be sent over. Kept small.
-const logFile = () => path.join(app.getPath('userData'), 'deskpet.log');
+const logFile = () => path.join(app.getPath('userData'), 'tomstretch.log');
 function log(...parts) {
   try {
     const file = logFile();
@@ -335,7 +335,7 @@ async function openSettings() {
   settingsWin = new BrowserWindow({
     width: 360,
     height: 720,
-    title: 'Desk Pet',
+    title: 'TomStretch',
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -376,7 +376,7 @@ function buildTrayMenu() {
       { label: 'Settings…', click: openSettings },
       { type: 'separator' },
       { label: 'Show log file', click: () => shell.showItemInFolder(logFile()) },
-      { label: 'Quit Desk Pet', click: () => app.quit() },
+      { label: 'Quit TomStretch', click: () => app.quit() },
     ])
   );
 }
@@ -384,7 +384,7 @@ function buildTrayMenu() {
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 18, height: 18 });
   tray = new Tray(icon);
-  tray.setToolTip('Desk Pet');
+  tray.setToolTip('TomStretch');
   buildTrayMenu();
 }
 
@@ -392,6 +392,24 @@ function createTray() {
 
 // Test runs get their own profile so they can run beside a normal instance.
 if (process.env.DESKPET_SMOKE) app.setPath('userData', path.join(process.env.DESKPET_SMOKE, 'profile'));
+
+// The app was called "Desk Pet" before 0.2.0: bring its settings along once.
+function adoptOldSettings() {
+  try {
+    const dir = app.getPath('userData');
+    if (fs.existsSync(path.join(dir, 'store.json'))) return;
+    for (const old of ['Desk Pet', 'desk-pet']) {
+      const from = path.join(app.getPath('appData'), old);
+      if (from === dir || !fs.existsSync(path.join(from, 'store.json'))) continue;
+      fs.mkdirSync(dir, { recursive: true });
+      for (const f of ['store.json', 'safe-graphics']) if (fs.existsSync(path.join(from, f))) fs.copyFileSync(path.join(from, f), path.join(dir, f));
+      return;
+    }
+  } catch (e) {
+    /* start with defaults */
+  }
+}
+if (!process.env.DESKPET_SMOKE) adoptOldSettings();
 if (!app.requestSingleInstanceLock()) app.quit();
 
 // Anything that goes wrong in the main process goes to the log, and the user
@@ -401,7 +419,7 @@ function fatal(where, err) {
   log(where, err && err.stack ? err.stack : String(err));
   if (errorShown || !app.isReady()) return;
   errorShown = true;
-  dialog.showErrorBox('Desk Pet ran into a problem', `${err && err.message ? err.message : err}\n\nDetails are in ${logFile()}`);
+  dialog.showErrorBox('TomStretch ran into a problem', `${err && err.message ? err.message : err}\n\nDetails are in ${logFile()}`);
 }
 process.on('uncaughtException', (e) => fatal('uncaught exception:', e));
 process.on('unhandledRejection', (e) => fatal('unhandled rejection:', e));

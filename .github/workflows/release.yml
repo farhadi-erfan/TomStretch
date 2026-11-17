@@ -56,5 +56,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" installers/* \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Desk Pet $GITHUB_REF_NAME" \
+            --title "TomStretch $GITHUB_REF_NAME" \
             --notes "Installers for macOS (Apple silicon and Intel) and Windows. They are unsigned: see the README's Installation section for the one-time step to open them."

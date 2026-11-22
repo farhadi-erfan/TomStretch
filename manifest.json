@@ -18,6 +18,7 @@
       "js": [
         "src/shared/settings.js",
         "src/shared/exercises.js",
+        "src/content/characters/art.js",
         "src/content/characters/cat.js",
         "src/content/characters/mouse.js",
         "src/content/animation/states.js",

@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+// Builds the SVG rig art (Chrome extension, demo page, and the desktop app's
+// "Simple art" fallback) from the same hand-drawn parts as the Rive files:
+//   rive/lib/cat-drawn.json + mouse-drawn.json  ->  src/content/characters/art.js
+//
+//   node rive/build-svg.js
+//
+// The JSON comes from design/parts/drawn/draw.py --rive and
+// design/parts/mouse-drawn/draw.py --rive. The part tree and class names are
+// the CSS rig's contract (see characters/cat.js); pivots come from the joints.
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const n = (v) => +v.toFixed(2);
+const pt = (p) => `${n(p[0])} ${n(p[1])}`;
+
+function pathD(subs) {
+  return subs
+    .map((s) => 'M' + pt(s.start) + s.segs.map((g) => (g.c1 ? `C${pt(g.c1)} ${pt(g.c2)} ${pt(g.p)}` : `L${pt(g.p)}`)).join('') + (s.closed ? 'Z' : ''))
+    .join('');
+}
+
+function shapes(list) {
+  return (list || [])
+    .map((s) => {
+      const at = [`d="${pathD(s.paths)}"`, `fill="${s.fill || 'none'}"`];
+      if (s.stroke) at.push(`stroke="${s.stroke}" stroke-width="${n(s.width)}" stroke-linecap="round" stroke-linejoin="round"`);
+      return `<path ${at.join(' ')}/>`;
+    })
+    .join('');
+}
+
+const g = (cls, ...kids) => `<g class="${cls}">${kids.join('')}</g>`;
+
+function front(D) {
+  const a = (name) => shapes(D.parts[name]);
+  const arm = (s, l) => g(`arm arm-${l}`, a(`upper-arm-${l}`), g('fore', a(`forearm-${l}`)));
+  const leg = (s, l) => g(`leg leg-${l}`, a(`thigh-${l}`), g('shin', a(`shin-${l}`)));
+  const head = g(
+    'head',
+    a('ear-l'), a('ear-r'), a('tuft'), a('head'),
+    g('blush', a('blush')),
+    g('eyes', a('eye-white-l'), a('eye-white-r'), g('pupil', a('pupil-l'), a('pupil-r'))),
+    g('brow brow-l', a('brow-l')), g('brow brow-r', a('brow-r')),
+    a('whiskers'),
+    g('m m-smile', a('mouth-smile')), g('m m-flat', a('mouth-flat')), g('m m-wavy', a('mouth-flat')),
+    g('m m-open', a('mouth-o')), g('m m-pant', a('mouth-pant')),
+    a('nose'),
+    g('sweat', a('sweat')),
+  );
+  // Same stacking as the Rive rig: legs in front of the torso, arms over the head.
+  return g('rig', g('tail', a('tail')), g('torso', a('torso'), head, a('scarf'), arm('L', 'l'), arm('R', 'r')), leg('L', 'l'), leg('R', 'r'));
+}
+
+function side(D) {
+  const a = (name) => shapes(D.parts[name]);
+  const arm = (w) => g(`s-arm s-${w === 'n' ? 'near' : 'far'}`, a(`s-arm-${w}`), g('s-fore', a(`s-fore-${w}`)));
+  const leg = (w) => g(`s-leg s-${w === 'n' ? 'near' : 'far'}`, a(`s-thigh-${w}`), g('s-shin', a(`s-shin-${w}`)));
+  const head = g(
+    's-head',
+    a('s-ear-f'), a('s-tuft'), a('s-head'), a('s-ear-n'),
+    g('s-eyes', a('s-eye'), g('s-pupil', a('s-pupil'))),
+    g('s-brow', a('s-brow')),
+    a('s-whiskers'),
+    g('m m-smile', a('s-mouth-smile')), g('m m-flat', a('s-mouth-flat')), g('m m-wavy', a('s-mouth-flat')),
+    g('m m-open', a('s-mouth-open')), g('m m-pant', a('s-mouth-open')),
+    a('s-nose'),
+  );
+  return g('s-rig', g('s-tail', a('s-tail')), leg('f'), g('s-torso', arm('f'), a('s-torso'), head, a('s-scarf'), arm('n')), leg('n'));
+}
+
+function css(id, D, pupilTravel, lim) {
+  const J = D.joints;
+  const S = D.side.joints;
+  const o = (p) => `transform-origin: ${n(p[0])}px ${n(p[1])}px;`;
+  const rules = {
+    '.rig': J.rig, '.tail': J.tail, '.torso': J.torso, '.head': J.head, '.eyes': J.eyes,
+    '.brow-l': J.browL, '.brow-r': J.browR,
+    '.arm-l': J.armL, '.arm-l .fore': J.foreL, '.arm-r': J.armR, '.arm-r .fore': J.foreR,
+    '.leg-l': J.legL, '.leg-l .shin': J.shinL, '.leg-r': J.legR, '.leg-r .shin': J.shinR,
+    '.s-rig': S.sRig, '.s-tail': S.sTail, '.s-torso': S.sTorso, '.s-head': S.sHead, '.s-eyes': S.sEyes,
+    '.s-arm.s-near': S.sArmN, '.s-near .s-fore': S.sForeN, '.s-arm.s-far': S.sArmF, '.s-far .s-fore': S.sForeF,
+    '.s-leg.s-near': S.sLegN, '.s-near .s-shin': S.sShinN, '.s-leg.s-far': S.sLegF, '.s-far .s-shin': S.sShinF,
+  };
+  const sel = `.dp-char[data-char="${id}"]`;
+  return [`${sel} { --pr: ${pupilTravel}px; --lim: ${lim}deg; }`, `${sel} svg { overflow: visible; }`]
+    .concat(Object.entries(rules).map(([k, p]) => `${sel} ${k} { ${o(p)} }`))
+    .join('\n');
+}
+
+const chars = {
+  cat: { file: 'cat-drawn.json', box: [120, 140], pupil: 2.6, lim: 110 }, // lim: as in rive/lib/poses.js wideHead
+  mouse: { file: 'mouse-drawn.json', box: [80, 96], pupil: 1.8, lim: 80 },
+};
+const art = {};
+for (const [id, c] of Object.entries(chars)) {
+  const D = require(path.join(__dirname, 'lib', c.file));
+  const vb = `0 0 ${c.box[0]} ${c.box[1]}`;
+  art[id] = {
+    svg: `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${front(D)}</svg>`,
+    sideSvg: `<svg class="view-side" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${side(D.side)}</svg>`,
+    css: css(id, D, c.pupil, c.lim),
+  };
+}
+
+const out = path.join(__dirname, '..', 'src', 'content', 'characters', 'art.js');
+fs.writeFileSync(
+  out,
+  `// Generated by rive/build-svg.js from the hand-drawn parts; do not edit.
+// The SVG rig art for both characters. cat.js / mouse.js use it in place of
+// their built-in placeholder drawings when this file is loaded before them.
+(function (g) {
+  const DP = (g.DeskPet = g.DeskPet || {});
+  DP.drawnArt = ${JSON.stringify(art)};
+})(globalThis);
+`,
+);
+console.log('wrote', path.relative(process.cwd(), out), fs.statSync(out).size, 'bytes');

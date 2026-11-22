@@ -1,4 +1,5 @@
-// Placeholder cat artwork. To swap the art, keep the part class names
+// The cat. Its art comes from characters/art.js (generated); the SVG below is
+// the old placeholder, used if that file is missing. To swap the art, keep the part class names
 // (rig, torso, head, arm-l/arm-r > fore, leg-l/leg-r > shin, tail, eyes, pupil,
 // brow-l/brow-r, m m-*) and update the pivot points in `css`.
 (function (g) {
@@ -140,4 +141,6 @@
 .dp-char[data-char="cat"] .s-tail { transform-origin: 48px 106px; }
 `,
   };
+  // The hand-drawn art (characters/art.js, built by rive/build-svg.js), when loaded.
+  if (DP.drawnArt && DP.drawnArt.cat) Object.assign(DP.characters.cat, DP.drawnArt.cat);
 })(globalThis);

@@ -8,11 +8,14 @@
 //          moves both sides symmetrically (positive raises an arm outward).
 //   --dir  +1 when travelling right, -1 when travelling left.
 //   --lx/--ly  gaze direction, -1..1, set from JS.
+//   --lim  how far an upper arm can rise before the head is in the way; past it
+//          the elbow bends and the forearm takes the rest (a "hooray" arm),
+//          so a raised paw shows beside the head instead of over the face.
 (function (g) {
   const DP = (g.DeskPet = g.DeskPet || {});
 
   DP.rigCss = `
-.dp-char { --dir: 1; --lx: 0; --ly: 0; --pr: 2.5px; }
+.dp-char { --dir: 1; --lx: 0; --ly: 0; --pr: 2.5px; --lim: 110deg; }
 .dp-char .rig * { transform-box: view-box; }
 .dp-char .arm-l, .dp-char .leg-l, .dp-char .brow-l { --s: 1; }
 .dp-char .arm-r, .dp-char .leg-r, .dp-char .brow-r { --s: -1; }
@@ -88,7 +91,8 @@
 /* pounce: stretched in the air */
 .dp-char[data-state="pounce"] {
   .rig { transform: scale(.9, 1.16) rotate(calc(var(--dir) * 18deg)); }
-  .arm { transform: rotate(calc(var(--s) * 150deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(150deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * max(0deg, 150deg - var(--lim)))); }
   .leg { transform: rotate(calc(var(--s) * 26deg)); }
   .brow { transform: rotate(calc(var(--s) * 14deg)); }
   .tail { animation: none; transform: rotate(-30deg); }
@@ -135,8 +139,8 @@
 .dp-char[data-state="search"] {
   .head { animation: dp-scan 1.6s ease-in-out infinite; }
   .pupil { animation: dp-scan-eyes 1.6s ease-in-out infinite; }
-  .arm-l { transform: rotate(150deg); }
-  .arm-l .fore { transform: rotate(75deg); }
+  .arm-l { transform: rotate(min(150deg, var(--lim))); }
+  .arm-l .fore { transform: rotate(calc(75deg + max(0deg, 150deg - var(--lim)))); }
   .brow { transform: rotate(calc(var(--s) * -8deg)); }
 }
 
@@ -173,28 +177,27 @@
 }
 
 /* wave */
-@keyframes dp-wave { 0%,100% { transform: rotate(35deg); } 50% { transform: rotate(-20deg); } }
+@keyframes dp-wave { 0%,100% { transform: rotate(calc(35deg - max(0deg, 150deg - var(--lim)))); } 50% { transform: rotate(calc(-20deg - max(0deg, 150deg - var(--lim)))); } }
 .dp-char[data-state="wave"] {
   .rig { animation: dp-bob .8s ease-in-out infinite; }
-  .arm-r { transform: rotate(-150deg); }
+  .arm-r { transform: rotate(calc(-1 * min(150deg, var(--lim)))); }
   .arm-r .fore { animation: dp-wave .4s ease-in-out infinite; }
 }
-/* single-segment arms (mouse) wave from the shoulder */
-@keyframes dp-wave-arm { 0%,100% { transform: rotate(-125deg); } 50% { transform: rotate(-165deg); } }
-.dp-char[data-char="mouse"][data-state="wave"] .arm-r { animation: dp-wave-arm .4s ease-in-out infinite; }
 
 /* cheer */
 @keyframes dp-hop { 0%,100% { transform: scale(1.06, .92); } 50% { transform: translateY(-9px) scale(.96, 1.06); } }
 .dp-char[data-state="cheer"] {
   .rig { animation: dp-hop .42s ease-in-out infinite; }
-  .arm { transform: rotate(calc(var(--s) * 160deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(160deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * max(0deg, 160deg - var(--lim)))); }
 }
 
 /* press: stomping on a button */
 @keyframes dp-stomp { 0%,100% { transform: scale(1.12, .84); } 50% { transform: translateY(-7px) scale(.95, 1.1); } }
 .dp-char[data-state="press"] {
   .rig { animation: dp-stomp .3s ease-in-out infinite; }
-  .arm { transform: rotate(calc(var(--s) * 120deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(120deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * max(0deg, 120deg - var(--lim)))); }
 }
 
 /* taunt: thumbs in ears */
@@ -215,24 +218,28 @@
 }
 
 /* climb: hand over hand up a wall */
-@keyframes dp-climb-arm { 0%,100% { transform: rotate(calc(var(--s) * 168deg)); } 50% { transform: rotate(calc(var(--s) * 118deg)); } }
+@keyframes dp-climb-arm { 0%,100% { transform: rotate(calc(var(--s) * min(168deg, var(--lim)))); } 50% { transform: rotate(calc(var(--s) * min(118deg, var(--lim)))); } }
+@keyframes dp-climb-fore { 0%,100% { transform: rotate(calc(var(--s) * max(0deg, 168deg - var(--lim)))); } 50% { transform: rotate(calc(var(--s) * max(0deg, 118deg - var(--lim)))); } }
 @keyframes dp-climb-leg { 0%,100% { transform: translateY(-7px); } 50% { transform: none; } }
 .dp-char[data-state="climb"] {
   .rig { animation: dp-sway .5s ease-in-out infinite; }
   .arm { animation: dp-climb-arm .5s ease-in-out infinite; }
-  .arm-r { animation-delay: -.25s; }
+  .fore { animation: dp-climb-fore .5s ease-in-out infinite; }
+  .arm-r, .arm-r .fore { animation-delay: -.25s; }
   .leg { animation: dp-climb-leg .5s ease-in-out infinite; }
   .leg-l { animation-delay: -.25s; }
   .brow { transform: rotate(calc(var(--s) * 10deg)); }
 }
 
 /* fall: flailing */
-@keyframes dp-flail { 0%,100% { transform: rotate(calc(var(--s) * 165deg)); } 50% { transform: rotate(calc(var(--s) * 120deg)); } }
+@keyframes dp-flail { 0%,100% { transform: rotate(calc(var(--s) * min(165deg, var(--lim)))); } 50% { transform: rotate(calc(var(--s) * min(120deg, var(--lim)))); } }
+@keyframes dp-flail-fore { 0%,100% { transform: rotate(calc(var(--s) * max(0deg, 165deg - var(--lim)))); } 50% { transform: rotate(calc(var(--s) * max(0deg, 120deg - var(--lim)))); } }
 @keyframes dp-kick { 0%,100% { transform: rotate(calc(var(--s) * 28deg)); } 50% { transform: rotate(calc(var(--s) * -8deg)); } }
 .dp-char[data-state="fall"] {
   .rig { transform: scale(.9, 1.14); }
   .arm { animation: dp-flail .14s linear infinite; }
-  .arm-r { animation-delay: -.07s; }
+  .fore { animation: dp-flail-fore .14s linear infinite; }
+  .arm-r, .arm-r .fore { animation-delay: -.07s; }
   .leg { animation: dp-kick .16s linear infinite; }
   .leg-r { animation-delay: -.08s; }
   .eyes { animation: none; transform: scale(1.25); }
@@ -258,8 +265,8 @@
 .dp-char[data-state="scared"] {
   .rig { animation: dp-tremble .07s linear infinite; }
   .torso { animation: none; transform: scaleY(.94); }
-  .arm { transform: rotate(calc(var(--s) * 150deg)); }
-  .fore { transform: rotate(calc(var(--s) * 75deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(150deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * (75deg + max(0deg, 150deg - var(--lim))))); }
   .leg { animation: dp-knock .14s linear infinite; }
   .eyes { animation: none; transform: scale(1.2); }
   .brow { transform: translateY(-3px) rotate(calc(var(--s) * -16deg)); }
@@ -268,28 +275,27 @@
 
 /* grab: clinging on to a prize */
 .dp-char[data-state="grab"] {
-  .arm { transform: rotate(calc(var(--s) * 140deg)); }
-  .fore { transform: rotate(calc(var(--s) * 55deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(140deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * (55deg + max(0deg, 140deg - var(--lim))))); }
   .leg { animation: dp-dangle .7s ease-in-out infinite; }
   .leg-r { animation-delay: -.35s; }
   .eyes { animation: none; transform: scaleY(.18); }
   .tail { animation-duration: .5s; }
 }
-.dp-char[data-char="mouse"][data-state="grab"] .arm { transform: rotate(calc(var(--s) * 165deg)); }
 
 /* splat: flattened against the glass */
 @keyframes dp-splat { 0% { transform: scale(1.14, .84); } 45% { transform: scale(.95, 1.05); } 100% { transform: none; } }
 .dp-char[data-state="splat"] {
   .rig { animation: dp-splat .5s ease-out forwards; }
-  .arm { transform: rotate(calc(var(--s) * 128deg)); }
-  .fore { transform: rotate(calc(var(--s) * 30deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(128deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * (30deg + max(0deg, 128deg - var(--lim))))); }
   .eyes { transform: scale(1.1); }
   .brow { transform: translateY(-2px); }
 }
 
 /* holding a sign: the right arm goes up whatever else the body is doing */
-.dp-char[data-sign] .arm-r { animation: none !important; transform: rotate(-150deg) !important; }
-.dp-char[data-sign] .arm-r .fore { animation: none !important; transform: none !important; }
+.dp-char[data-sign] .arm-r { animation: none !important; transform: rotate(calc(-1 * min(150deg, var(--lim)))) !important; }
+.dp-char[data-sign] .arm-r .fore { animation: none !important; transform: rotate(calc(-1 * max(0deg, 150deg - var(--lim)))) !important; }
 
 /* ==== profile view (travel) ==================================================
    Drawn facing right and mirrored with --dir. Near and far limbs share
@@ -374,17 +380,20 @@
 
 /* ---- exercises ---- */
 
-@keyframes dp-ex-reach { 0%,100% { transform: rotate(calc(var(--s) * 8deg)); } 35%,72% { transform: rotate(calc(var(--s) * 172deg)); } }
+@keyframes dp-ex-reach { 0%,100% { transform: rotate(calc(var(--s) * 8deg)); } 35%,72% { transform: rotate(calc(var(--s) * min(172deg, var(--lim)))); } }
+@keyframes dp-ex-reach-fore { 0%,100% { transform: none; } 35%,72% { transform: rotate(calc(var(--s) * max(0deg, 172deg - var(--lim)))); } }
 @keyframes dp-ex-tall { 0%,100% { transform: none; } 35%,72% { transform: scale(.97, 1.06); } }
 .dp-char[data-state="ex-overhead"] {
   .rig { animation: dp-ex-tall 4s ease-in-out infinite; }
   .arm { animation: dp-ex-reach 4s ease-in-out infinite; }
+  .fore { animation: dp-ex-reach-fore 4s ease-in-out infinite; }
 }
 
 @keyframes dp-ex-lean { 0%,50%,100% { transform: none; } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
 .dp-char[data-state="ex-side"] {
   .torso { animation: dp-ex-lean 5s ease-in-out infinite; }
-  .arm { transform: rotate(calc(var(--s) * 170deg)); }
+  .arm { transform: rotate(calc(var(--s) * min(170deg, var(--lim)))); }
+  .fore { transform: rotate(calc(var(--s) * max(0deg, 170deg - var(--lim)))); }
 }
 
 @keyframes dp-ex-roll {
@@ -411,23 +420,21 @@
 .dp-char[data-state="ex-lookaway"] {
   .head { animation: dp-ex-far 7s ease-in-out infinite; }
   .pupil { animation: dp-ex-far-eyes 7s ease-in-out infinite; }
-  .arm-l { transform: rotate(150deg); }
-  .arm-l .fore { transform: rotate(75deg); }
+  .arm-l { transform: rotate(min(150deg, var(--lim))); }
+  .arm-l .fore { transform: rotate(calc(75deg + max(0deg, 150deg - var(--lim)))); }
 }
 
 @keyframes dp-ex-shake { 0%,100% { transform: rotate(calc(var(--s) * 15deg)); } 50% { transform: rotate(calc(var(--s) * 50deg)); } }
-@keyframes dp-ex-shake-arm { 0%,100% { transform: rotate(calc(var(--s) * 60deg)); } 50% { transform: rotate(calc(var(--s) * 78deg)); } }
 .dp-char[data-state="ex-wrists"] {
   .arm { transform: rotate(calc(var(--s) * 65deg)); }
   .fore { animation: dp-ex-shake .22s linear infinite; }
 }
-.dp-char[data-char="mouse"][data-state="ex-wrists"] .arm { animation: dp-ex-shake-arm .22s linear infinite; }
 
 @keyframes dp-ex-tuck { 0%,18%,88%,100% { transform: none; } 30%,72% { transform: translateY(3px) scale(1, .96); } }
 .dp-char[data-state="ex-chin"] {
   .head { animation: dp-ex-tuck 3.6s ease-in-out infinite; }
-  .arm-r { transform: rotate(-150deg); }
-  .arm-r .fore { transform: rotate(-80deg); }
+  .arm-r { transform: rotate(calc(-1 * min(150deg, var(--lim)))); }
+  .arm-r .fore { transform: rotate(calc(-80deg - max(0deg, 150deg - var(--lim)))); }
 }
 
 @keyframes dp-ex-tilt { 0%,8%,50%,58%,100% { transform: none; } 18%,40% { transform: rotate(18deg); } 68%,90% { transform: rotate(-18deg); } }

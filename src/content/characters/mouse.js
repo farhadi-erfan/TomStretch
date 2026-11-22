@@ -99,4 +99,6 @@
 .dp-char[data-char="mouse"] .s-tail { transform-origin: 34px 78px; }
 `,
   };
+  // The hand-drawn art (characters/art.js, built by rive/build-svg.js), when loaded.
+  if (DP.drawnArt && DP.drawnArt.mouse) Object.assign(DP.characters.mouse, DP.drawnArt.mouse);
 })(globalThis);

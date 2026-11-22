@@ -538,10 +538,9 @@
 
     onCursor(c) {
       if (!this.running) return;
-      const { cat, mouse } = this.w;
+      const { cat } = this.w;
       if (this.holding) cat.setPos(clamp(c.x, 0, this.vw), this.gripY());
-      if (!cat.hidden) cat.lookAt(c.x, c.y);
-      if (!mouse.hidden) mouse.lookAt(c.x, c.y);
+      // The eyes stay on the viewer rather than chasing the pointer.
     }
 
     // The user shook the pointer (which makes it balloon on macOS): terror.

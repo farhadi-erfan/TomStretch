@@ -211,15 +211,15 @@ function poses(isMouse) {
   // Not used by any scene at present; kept so state numbers stay stable.
   P.sneak = P.idle;
   P.search = P.look;
-  return isMouse ? P : wideHead(P);
+  // Both heads are wide next to the arms: raise a paw past it with the elbow.
+  return wideHead(P, isMouse ? 80 : 110);
 }
 
 // The drawn cat's head is much wider than its shoulders and its arms are
 // short, so an arm raised straight up hides behind it. Past 110 degrees the
 // upper arm stops and the elbow bends the rest of the way instead (a "hooray"
 // arm), which keeps the paw up beside the head.
-function wideHead(P) {
-  const LIMIT = 110;
+function wideHead(P, LIMIT) {
   const upper = (v) => (Math.abs(v) <= LIMIT ? v : Math.sign(v) * LIMIT);
   const excess = (v) => v - upper(v);
   const map = (value, fn) => (typeof value === 'number' ? fn(value) : value.map((k) => ({ ...k, v: fn(k.v) })));

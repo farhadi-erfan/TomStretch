@@ -7,12 +7,13 @@ const { part, ellipse, rect, poly, strokes, svg } = require('./rml');
 
 const ink = (color, width, alpha) => ({ stroke: color, width, alpha });
 
-// The drawn cat's front view, from design/parts/drawn/draw.py --rive.
-function drawnFront() {
-  const D = require('./cat-drawn.json');
+// A hand-drawn character's front view, from design/parts/drawn/draw.py --rive
+// (cat-drawn.json) or design/parts/mouse-drawn/draw.py --rive (mouse-drawn.json).
+// Parts one character doesn't have (the mouse's tuft and scarf) come out empty.
+function drawnFront(D) {
   const J = D.joints;
   // A drawn part's shapes, each with its own paint.
-  const art = (name) => D.parts[name].map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
+  const art = (name) => (D.parts[name] || []).map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
   const P = (name, joint, children, opts) => part(name, J[joint], children, opts);
   const hidden = { opacity: 0 };
   const leg = (s, l) =>
@@ -22,6 +23,7 @@ function drawnFront() {
   const head = P('head', 'head', [
     P('earL', 'earL', art('ear-l')),
     P('earR', 'earR', art('ear-r')),
+    ...art('tuft'),
     ...art('head'),
     P('blush', 'blush', art('blush'), hidden),
     P('eyes', 'eyes', [...art('eye-white-l'), ...art('eye-white-r'), P('pupils', 'pupils', [...art('pupil-l'), ...art('pupil-r')])]),
@@ -41,24 +43,24 @@ function drawnFront() {
   return part('front', [0, 0], [
     P('rig', 'rig', [
       P('tail', 'tail', art('tail')),
-      P('torso', 'torso', [...art('torso'), head, arm('L', 'l'), arm('R', 'r')]), // arms over the head: raised paws stay in sight
+      P('torso', 'torso', [...art('torso'), head, ...art('scarf'), arm('L', 'l'), arm('R', 'r')]), // arms over the head: raised paws stay in sight
       leg('L', 'l'),
       leg('R', 'r'),
     ]),
   ]);
 }
 
-// The drawn cat's side view (facing right; sideFlip mirrors it).
-function drawnSide() {
-  const D = require('./cat-drawn.json').side;
+// The side view (facing right; sideFlip mirrors it), from the same file.
+function drawnSide(D, flipX) {
   const J = D.joints;
-  const art = (name) => D.parts[name].map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
+  const art = (name) => (D.parts[name] || []).map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
   const P = (name, joint, children, opts) => part(name, J[joint], children, opts);
   const hidden = { opacity: 0 };
   const leg = (s, l) => P(`sLeg${s}`, `sLeg${s}`, [...art(`s-thigh-${l}`), P(`sShin${s}`, `sShin${s}`, art(`s-shin-${l}`))]);
   const arm = (s, l) => P(`sArm${s}`, `sArm${s}`, [...art(`s-arm-${l}`), P(`sFore${s}`, `sFore${s}`, art(`s-fore-${l}`))]);
   const head = P('sHead', 'sHead', [
     ...art('s-ear-f'),
+    ...art('s-tuft'),
     ...art('s-head'),
     ...art('s-ear-n'),
     P('sEyes', 'sEyes', [...art('s-eye'), P('sPupil', 'sPupil', art('s-pupil'))]),
@@ -72,16 +74,18 @@ function drawnSide() {
   // Far limbs behind the body; the near leg in front of it (its hip cap hides
   // the torso's hip, as in the front view) and the near arm on top.
   return part('side', [0, 0], [
-    part('sideFlip', [60, 0], [
+    part('sideFlip', [flipX, 0], [
       P('sRig', 'sRig', [
         P('sTail', 'sTail', art('s-tail')),
         leg('F', 'f'),
-        P('sTorso', 'sTorso', [arm('F', 'f'), ...art('s-torso'), head, arm('N', 'n')]),
+        P('sTorso', 'sTorso', [arm('F', 'f'), ...art('s-torso'), head, ...art('s-scarf'), arm('N', 'n')]),
         leg('N', 'n'),
       ]),
     ]),
   ], hidden);
 }
+
+const drawn = (D, flipX) => [drawnFront(D), drawnSide(D.side, flipX)];
 
 function cat() {
   const FUR = '#f2994a';
@@ -186,7 +190,7 @@ function cat() {
     ]),
   ], { opacity: 0 });
 
-  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: process.env.OLD_CAT ? [front, side] : [drawnFront(), drawnSide()] };
+  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: process.env.OLD_CAT ? [front, side] : drawn(require('./cat-drawn.json'), 60) };
 }
 
 function mouse() {
@@ -262,7 +266,7 @@ function mouse() {
     ]),
   ], { opacity: 0 });
 
-  return { name: 'mouse', artboard: 'Mouse', box: [80, 96], pupil: 1.8, parts: [front, side] };
+  return { name: 'mouse', artboard: 'Mouse', box: [80, 96], pupil: 1.8, parts: process.env.OLD_MOUSE ? [front, side] : drawn(require('./mouse-drawn.json'), 40) };
 }
 
 module.exports = { cat, mouse };

@@ -211,7 +211,40 @@ function poses(isMouse) {
   // Not used by any scene at present; kept so state numbers stay stable.
   P.sneak = P.idle;
   P.search = P.look;
-  return P;
+  return isMouse ? P : wideHead(P);
+}
+
+// The drawn cat's head is much wider than its shoulders and its arms are
+// short, so an arm raised straight up hides behind it. Past 110 degrees the
+// upper arm stops and the elbow bends the rest of the way instead (a "hooray"
+// arm), which keeps the paw up beside the head.
+function wideHead(P) {
+  const LIMIT = 110;
+  const upper = (v) => (Math.abs(v) <= LIMIT ? v : Math.sign(v) * LIMIT);
+  const excess = (v) => v - upper(v);
+  const map = (value, fn) => (typeof value === 'number' ? fn(value) : value.map((k) => ({ ...k, v: fn(k.v) })));
+  const out = {};
+  const done = new Map(); // aliased entries (sneak = idle) stay one entry
+  for (const [name, entry] of Object.entries(P)) {
+    if (!done.has(entry)) {
+      const parts = { ...entry.parts };
+      for (const side of ['L', 'R']) {
+        const arm = parts[`arm${side}`];
+        if (!arm || arm.rot == null) continue;
+        const fore = parts[`fore${side}`] || {};
+        const base = fore.rot == null ? 0 : fore.rot;
+        if (typeof base !== 'number' && typeof arm.rot !== 'number') continue; // both keyed: leave it
+        parts[`arm${side}`] = { ...arm, rot: map(arm.rot, upper) };
+        parts[`fore${side}`] = {
+          ...fore,
+          rot: typeof arm.rot === 'number' ? map(base, (f) => f + excess(arm.rot)) : map(arm.rot, (v) => base + excess(v)),
+        };
+      }
+      done.set(entry, { ...entry, parts });
+    }
+    out[name] = done.get(entry);
+  }
+  return out;
 }
 
 module.exports = { poses };

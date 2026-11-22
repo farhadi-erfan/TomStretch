@@ -3,9 +3,85 @@
 // head, armL...; side view: the same with an "s" prefix, limbs N(ear)/F(ar)).
 // Children are listed back-to-front.
 'use strict';
-const { part, ellipse, rect, poly, strokes } = require('./rml');
+const { part, ellipse, rect, poly, strokes, svg } = require('./rml');
 
 const ink = (color, width, alpha) => ({ stroke: color, width, alpha });
+
+// The drawn cat's front view, from design/parts/drawn/draw.py --rive.
+function drawnFront() {
+  const D = require('./cat-drawn.json');
+  const J = D.joints;
+  // A drawn part's shapes, each with its own paint.
+  const art = (name) => D.parts[name].map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
+  const P = (name, joint, children, opts) => part(name, J[joint], children, opts);
+  const hidden = { opacity: 0 };
+  const leg = (s, l) =>
+    P(`leg${s}`, `leg${s}`, [...art(`thigh-${l}`), P(`shin${s}`, `shin${s}`, art(`shin-${l}`))]);
+  const arm = (s, l) =>
+    P(`arm${s}`, `arm${s}`, [...art(`upper-arm-${l}`), P(`fore${s}`, `fore${s}`, art(`forearm-${l}`))]);
+  const head = P('head', 'head', [
+    P('earL', 'earL', art('ear-l')),
+    P('earR', 'earR', art('ear-r')),
+    ...art('head'),
+    P('blush', 'blush', art('blush'), hidden),
+    P('eyes', 'eyes', [...art('eye-white-l'), ...art('eye-white-r'), P('pupils', 'pupils', [...art('pupil-l'), ...art('pupil-r')])]),
+    P('browL', 'browL', art('brow-l')),
+    P('browR', 'browR', art('brow-r')),
+    ...art('whiskers'),
+    P('mSmile', 'mouth', art('mouth-smile')),
+    P('mFlat', 'mouth', art('mouth-flat'), hidden),
+    P('mWavy', 'mouth', art('mouth-flat'), hidden), // no wavy mouth drawn yet
+    P('mOpen', 'mouth', art('mouth-o'), hidden),
+    P('mPant', 'mouth', art('mouth-pant'), hidden),
+    ...art('nose'),
+    P('sweat', 'sweat', art('sweat'), hidden),
+  ]);
+  // Back to front: tail, torso (head, then arms, inside it), then the
+  // legs in front of the torso so the hips turn cleanly (see draw.py).
+  return part('front', [0, 0], [
+    P('rig', 'rig', [
+      P('tail', 'tail', art('tail')),
+      P('torso', 'torso', [...art('torso'), head, arm('L', 'l'), arm('R', 'r')]), // arms over the head: raised paws stay in sight
+      leg('L', 'l'),
+      leg('R', 'r'),
+    ]),
+  ]);
+}
+
+// The drawn cat's side view (facing right; sideFlip mirrors it).
+function drawnSide() {
+  const D = require('./cat-drawn.json').side;
+  const J = D.joints;
+  const art = (name) => D.parts[name].map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
+  const P = (name, joint, children, opts) => part(name, J[joint], children, opts);
+  const hidden = { opacity: 0 };
+  const leg = (s, l) => P(`sLeg${s}`, `sLeg${s}`, [...art(`s-thigh-${l}`), P(`sShin${s}`, `sShin${s}`, art(`s-shin-${l}`))]);
+  const arm = (s, l) => P(`sArm${s}`, `sArm${s}`, [...art(`s-arm-${l}`), P(`sFore${s}`, `sFore${s}`, art(`s-fore-${l}`))]);
+  const head = P('sHead', 'sHead', [
+    ...art('s-ear-f'),
+    ...art('s-head'),
+    ...art('s-ear-n'),
+    P('sEyes', 'sEyes', [...art('s-eye'), P('sPupil', 'sPupil', art('s-pupil'))]),
+    ...art('s-brow'),
+    ...art('s-whiskers'),
+    P('smSmile', 'sMouth', art('s-mouth-smile')),
+    P('smFlat', 'sMouth', art('s-mouth-flat'), hidden),
+    P('smOpen', 'sMouth', art('s-mouth-open'), hidden),
+    ...art('s-nose'),
+  ]);
+  // Far limbs behind the body; the near leg in front of it (its hip cap hides
+  // the torso's hip, as in the front view) and the near arm on top.
+  return part('side', [0, 0], [
+    part('sideFlip', [60, 0], [
+      P('sRig', 'sRig', [
+        P('sTail', 'sTail', art('s-tail')),
+        leg('F', 'f'),
+        P('sTorso', 'sTorso', [arm('F', 'f'), ...art('s-torso'), head, arm('N', 'n')]),
+        leg('N', 'n'),
+      ]),
+    ]),
+  ], hidden);
+}
 
 function cat() {
   const FUR = '#f2994a';
@@ -110,7 +186,7 @@ function cat() {
     ]),
   ], { opacity: 0 });
 
-  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: [front, side] };
+  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: process.env.OLD_CAT ? [front, side] : [drawnFront(), drawnSide()] };
 }
 
 function mouse() {

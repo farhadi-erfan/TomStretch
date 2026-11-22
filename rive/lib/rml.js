@@ -26,6 +26,9 @@ const poly = (points, paint) => ({ kind: 'poly', points, paint });
 // Open stroked paths. Each is [start, ...segments]; a segment is
 // {c1, c2, p} (cubic), {q, p} (quadratic) or {p} (line). `paths` may hold several.
 const strokes = (paths, paint) => ({ kind: 'strokes', paths, paint });
+// Drawn artwork: closed or open cubic paths (from design/parts/drawn/draw.py).
+// paths: [{closed, start: [x, y], segs: [{c1, c2, p} | {p}]}]
+const svg = (paths, paint) => ({ kind: 'svg', paths, paint });
 
 // paint: {fill, stroke, width, alpha}
 function paintRml(paint, pad) {
@@ -72,6 +75,39 @@ function pathRml(path, origin, pad) {
   return out + `${pad}</PointsPath>\n`;
 }
 
+// A drawn path (open or closed) as a PointsPath.
+function drawnPathRml(path, origin, pad) {
+  const verts = [{ p: path.start, cin: null, cout: null }];
+  for (const s of path.segs) {
+    verts[verts.length - 1].cout = s.c1 || null;
+    verts.push({ p: s.p, cin: s.c2 || null, cout: null });
+  }
+  const same = (a, b) => Math.abs(a[0] - b[0]) < 1e-3 && Math.abs(a[1] - b[1]) < 1e-3;
+  if (path.closed && verts.length > 1 && same(verts[verts.length - 1].p, verts[0].p)) {
+    verts[0].cin = verts.pop().cin; // the closing point is the start point
+  }
+  let area = 0;
+  verts.forEach((v, i) => {
+    const n = verts[(i + 1) % verts.length].p;
+    area += v.p[0] * n[1] - n[0] * v.p[1];
+  });
+  const handle = (from, to) => [Math.atan2(to[1] - from[1], to[0] - from[0]), Math.hypot(to[0] - from[0], to[1] - from[1])];
+  let out = `${pad}<PointsPath isClosed="${!!path.closed}" isClockwise="${area > 0}" name="Path">\n`;
+  for (const v of verts) {
+    const x = num(v.p[0] - origin[0]);
+    const y = num(v.p[1] - origin[1]);
+    if (!v.cin && !v.cout) {
+      out += `${pad}    <StraightVertex x="${x}" y="${y}"/>\n`;
+    } else {
+      // A side without a handle gets a zero-length one (a corner).
+      const [ir, id] = v.cin ? handle(v.p, v.cin) : [0, 0];
+      const [or, od] = v.cout ? handle(v.p, v.cout) : [0, 0];
+      out += `${pad}    <CubicDetachedVertex x="${x}" y="${y}" inRotation="${num(ir)}" inDistance="${num(id)}" outRotation="${num(or)}" outDistance="${num(od)}"/>\n`;
+    }
+  }
+  return out + `${pad}</PointsPath>\n`;
+}
+
 // ---------------------------------------------------------------------------
 // Emitting the tree
 // ---------------------------------------------------------------------------
@@ -112,6 +148,11 @@ class Build {
     if (s.kind === 'strokes') {
       let out = `${pad}<Shape name="Lines">\n`;
       for (const p of s.paths) out += pathRml(p, origin, pad + '    ');
+      return out + paintRml(s.paint, pad + '    ') + `${pad}</Shape>\n`;
+    }
+    if (s.kind === 'svg') {
+      let out = `${pad}<Shape name="Drawn">\n`;
+      for (const p of s.paths) out += drawnPathRml(p, origin, pad + '    ');
       return out + paintRml(s.paint, pad + '    ') + `${pad}</Shape>\n`;
     }
     throw new Error('unknown shape ' + s.kind);
@@ -196,4 +237,4 @@ function animationRml(build, name, id, frames, loop, pose, pad) {
   return out + `${pad}</LinearAnimation>\n`;
 }
 
-module.exports = { part, ellipse, rect, poly, strokes, Build, swing, keys, repeat, animationRml, num, esc };
+module.exports = { part, ellipse, rect, poly, strokes, svg, Build, swing, keys, repeat, animationRml, num, esc };

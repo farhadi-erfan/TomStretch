@@ -1,6 +1,6 @@
 # TomStretch — cat & mouse break buddies
 
-An animated cat and mouse who drop in on your screen. They are not there all the time: every minute or two they tear through mid-chase, nap on top of a window, or go after your pointer the way a pet would — and every 30 minutes the cat asks you to take a stretch break.
+An animated cat and mouse who drop in on your screen. They are not there all the time: every minute or two (*Drop by* in settings: often, now and then, rarely, or only for breaks) they tear through mid-chase, nap on top of a window, or go after your pointer the way a pet would — and every 30 minutes the cat asks you to take a stretch break.
 
 The cat ("Biscuit") is a hand-drawn blue-grey tabby with one bent ear, and the mouse ("Pip") a sand-coloured mouse with an olive scarf. The desktop app draws them with Rive; the Chrome extension and the desktop app's "Simple art" fallback draw the same art as an SVG rig animated with CSS. Names live in `displayName` in `src/content/characters/*.js`.
 

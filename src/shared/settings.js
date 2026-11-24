@@ -21,6 +21,7 @@
       eyes: true,
       wrists: true,
     },
+    visitMinutes: 1.25, // average gap between drop-in visits; 0 = only for breaks
     cursorGag: true,
     buttonReactions: true,
     volume: 0, // 0..1, silent by default
@@ -41,6 +42,7 @@
     volume: [0, 1],
     opacity: [0.2, 1],
     size: [0.5, 2],
+    visitMinutes: [0, 60],
     visionHz: [1, 15],
   };
 

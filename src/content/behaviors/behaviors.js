@@ -49,6 +49,16 @@
       this.scheduleVisit(2500); // say hello soon after launch
     }
 
+    // The visit pace changed in settings: start counting again from now.
+    setPace() {
+      if (this.running) this.scheduleVisit();
+    }
+
+    // Drop-in visits (and the welcome back) are off; they only come for breaks.
+    get visitsOff() {
+      return !(this.w.settings.visitMinutes > 0);
+    }
+
     stop() {
       this.running = false;
       clearTimeout(this.visitTimer);
@@ -80,9 +90,10 @@
 
     // ---- scheduling --------------------------------------------------------
 
-    scheduleVisit(delay = rand(40000, 110000)) {
+    // The gap averages the "Drop by" setting, give or take half of it.
+    scheduleVisit(delay = this.w.settings.visitMinutes * 60000 * rand(0.5, 1.5)) {
       clearTimeout(this.visitTimer);
-      if (!this.running) return;
+      if (!this.running || this.visitsOff) return;
       this.visitTimer = setTimeout(() => {
         if (document.hidden) return this.scheduleVisit(5000);
         if (!this.play('visit', 1, (s) => this.visit(s))) this.scheduleVisit();
@@ -574,7 +585,7 @@
     }
 
     onReturn({ awayMs }) {
-      if (!this.running || awayMs < 4000) return;
+      if (!this.running || this.visitsOff || awayMs < 4000) return;
       const { cat, loco, sfx } = this.w;
       this.play('welcome', 1.5, async (s) => {
         if (cat.hidden) {

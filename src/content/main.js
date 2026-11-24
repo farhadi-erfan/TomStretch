@@ -22,6 +22,7 @@
     world.breaks = new DP.BreakSequence(world);
 
     function apply(settings) {
+      const pace = world.settings && world.settings.visitMinutes;
       world.settings = settings;
       world.sfx.volume = settings.volume;
       world.stage.setOpacity(settings.opacity);
@@ -30,6 +31,7 @@
       world.stage.setEnabled(settings.enabled);
       if (settings.enabled) world.behaviors.start();
       else world.behaviors.stop();
+      if (pace !== undefined && pace !== settings.visitMinutes) world.behaviors.setPace();
     }
     apply(world.settings);
     DP.settings.onChange(apply);

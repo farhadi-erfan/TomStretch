@@ -27,7 +27,7 @@
   }
 
   const CHECKS = ['enabled', 'restoreAfterBreak', 'cursorGag', 'buttonReactions', 'visionTerrain'];
-  const NUMBERS = ['intervalMinutes', 'snoozeMinutes', 'volume', 'opacity', 'size', 'visionHz'];
+  const NUMBERS = ['intervalMinutes', 'snoozeMinutes', 'volume', 'opacity', 'size', 'visionHz', 'visitMinutes'];
 
   for (const id of CHECKS) $(id).addEventListener('change', () => save({ [id]: $(id).checked }));
   for (const id of NUMBERS) {

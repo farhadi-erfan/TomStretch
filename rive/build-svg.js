@@ -11,6 +11,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { climbMask } = require('./lib/edge');
 
 const n = (v) => +v.toFixed(2);
 const pt = (p) => `${n(p[0])} ${n(p[1])}`;
@@ -67,7 +68,8 @@ function side(D) {
     g('m m-open', a('s-mouth-open')), g('m m-pant', a('s-mouth-open')),
     a('s-nose'),
   );
-  return g('s-rig', g('s-tail', a('s-tail')), leg('f'), g('s-torso', arm('f'), a('s-torso'), head, a('s-scarf'), arm('n')), leg('n'));
+  // The far arm sits in a wrapper the climb state clips at the wall's edge.
+  return g('s-rig', g('s-tail', a('s-tail')), leg('f'), g('s-torso', g('s-far-clip', arm('f')), a('s-torso'), head, a('s-scarf'), arm('n')), leg('n'));
 }
 
 function css(id, D, pupilTravel, lim) {
@@ -84,7 +86,11 @@ function css(id, D, pupilTravel, lim) {
     '.s-leg.s-near': S.sLegN, '.s-near .s-shin': S.sShinN, '.s-leg.s-far': S.sLegF, '.s-far .s-shin': S.sShinF,
   };
   const sel = `.dp-char[data-char="${id}"]`;
-  return [`${sel} { --pr: ${pupilTravel}px; --lim: ${lim}deg; }`, `${sel} svg { overflow: visible; }`]
+  return [
+    `${sel} { --pr: ${pupilTravel}px; --lim: ${lim}deg; }`,
+    `${sel} svg { overflow: visible; }`,
+    `${sel}[data-state="climb"] .s-far-clip { clip-path: url(#dp-edge-${id}); }`, // the far paw goes behind the wall
+  ]
     .concat(Object.entries(rules).map(([k, p]) => `${sel} ${k} { ${o(p)} }`))
     .join('\n');
 }
@@ -99,7 +105,10 @@ for (const [id, c] of Object.entries(chars)) {
   const vb = `0 0 ${c.box[0]} ${c.box[1]}`;
   art[id] = {
     svg: `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${front(D)}</svg>`,
-    sideSvg: `<svg class="view-side" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${side(D.side)}</svg>`,
+    sideSvg:
+      `<svg class="view-side" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
+      `<defs><clipPath id="dp-edge-${id}" clipPathUnits="userSpaceOnUse"><path d="M${climbMask(D.side, c.box[0], id === 'mouse').map(pt).join('L')}Z"/></clipPath></defs>` +
+      `${side(D.side)}</svg>`,
     css: css(id, D, c.pupil, c.lim),
   };
 }

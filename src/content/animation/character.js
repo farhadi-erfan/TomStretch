@@ -77,6 +77,10 @@
       this.h = this.def.height * scale;
       this.el.style.width = this.w + 'px';
       this.el.style.height = this.h + 'px';
+      // Stand on the soles, not on the bottom of the art's box.
+      const sole = this.def.sole || 1;
+      this.el.style.bottom = (-(1 - sole) * this.h).toFixed(1) + 'px';
+      this.el.style.setProperty('--sole', (sole * 100).toFixed(1) + '%');
       this.setPos(this.x, this.y);
       if (this.renderer.setZoom) this.renderer.setZoom(this.zoom * scale);
     }

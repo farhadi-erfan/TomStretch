@@ -63,6 +63,7 @@ function setStore(obj) {
   if (changes.settings) {
     const after = getSettings();
     if (after.enabled !== before.enabled || after.intervalMinutes !== before.intervalMinutes) schedule();
+    if (['enabled', 'visionTerrain', 'visionHz'].some((k) => after[k] !== before[k])) scanSoon(0);
     buildTrayMenu();
   }
 }
@@ -95,11 +96,13 @@ function triggerBreak(force) {
     return { ok: false, reason: 'away' };
   }
   pendingBreak = false;
+  if (!overlayLive()) return { ok: false, reason: 'quitting' };
   overlay.webContents.send('message', { type: 'BREAK_START' });
   return { ok: true };
 }
 
 function tick() {
+  if (!overlayLive()) return;
   const nowAway = powerMonitor.getSystemIdleTime() >= IDLE_AWAY_SECONDS;
   if (nowAway !== away) {
     away = nowAway;
@@ -192,6 +195,8 @@ ipcMain.on('set-interactive', (e, on) => {
 // Layer 1: app windows. A small helper process streams their geometry.
 let tracker = null;
 let quitting = false;
+// The overlay is usable (not closing down with the app).
+const overlayLive = () => !quitting && overlay && !overlay.isDestroyed();
 let windowRects = []; // overlay coordinates, front-most first
 
 function startWindowTracker() {
@@ -226,6 +231,7 @@ function startWindowTracker() {
 }
 
 function onWindows(list) {
+  if (!overlayLive()) return;
   const b = overlay.getBounds();
   windowRects = list.map(([id, pid, x, y, w, h]) => ({ id: 'w' + id, left: x - b.x, top: y - b.y, right: x - b.x + w, bottom: y - b.y + h }));
   overlay.webContents.send('windows', windowRects);
@@ -233,25 +239,101 @@ function onWindows(list) {
 }
 
 // Layer 2: edges seen inside windows (toolbars, cards, images, web pages):
-// ledges to stand on and walls to climb. Looked at about once a second while
-// the pets are on screen, every few seconds otherwise.
+// ledges to stand on and walls to climb. A hidden window keeps a live,
+// low-resolution stream of the screen and looks at it several times a second
+// (the visionHz setting) while the pets are on screen, once a second
+// otherwise. If the stream can't start, one-off screenshots (about 0.3 s
+// each) are the fallback.
+const LOOK_HZ_IDLE = 1;
 let scanTimer = null;
 let scanning = false;
 let petsOnStage = false;
+let visionWin = null;
+let streamFailed = false;
 ipcMain.on('on-stage', (e, on) => {
   if (!overlay || e.sender !== overlay.webContents) return;
   petsOnStage = !!on;
   if (petsOnStage) scanSoon(0);
+  else updateVision(); // slow the stream down
 });
 
-function scanSoon(delay) {
-  clearTimeout(scanTimer);
-  scanTimer = setTimeout(scanLedges, delay);
+function sendEdges(edges) {
+  if (!overlayLive()) return;
+  const b = overlay.getBounds();
+  const local = (r) => ({ ...r, left: r.left - b.x, right: r.right - b.x, top: r.top - b.y, bottom: r.bottom - b.y });
+  overlay.webContents.send('ledges', edges.ledges.map(local));
+  overlay.webContents.send('walls', edges.walls.map(local));
 }
 
+// Starts, retunes or stops the stream to match the settings and whether the
+// pets are on screen.
+const streamAlive = () => visionWin && !visionWin.isDestroyed();
+let sentRate = null;
+function updateVision() {
+  const s = getSettings();
+  const want = !quitting && s.enabled && s.visionTerrain && !streamFailed && vision.ensurePermission();
+  if (!want) {
+    if (streamAlive()) visionWin.destroy();
+    visionWin = null;
+    return;
+  }
+  if (!streamAlive()) {
+    sentRate = null;
+    visionWin = new BrowserWindow({
+      show: false,
+      webPreferences: { preload: path.join(__dirname, 'vision-preload.js'), backgroundThrottling: false },
+    });
+    visionWin.on('closed', () => (visionWin = null));
+    visionWin.webContents.on('render-process-gone', (e, d) => streamGone('vision window gone: ' + d.reason));
+    visionWin.loadFile(path.join(__dirname, 'vision-capture.html'));
+  }
+  const rate = petsOnStage ? s.visionHz : LOOK_HZ_IDLE;
+  if (rate !== sentRate) {
+    sentRate = rate;
+    visionWin.webContents.send('vision-rate', rate);
+  }
+}
+
+// The stream stopped for good: fall back to screenshots.
+function streamGone(why) {
+  log('screen stream failed, using screenshots:', why);
+  streamFailed = true;
+  scanSoon(0); // destroys the window, starts the screenshot loop
+}
+
+const fromVision = (e) => streamAlive() && e.sender === visionWin.webContents;
+ipcMain.handle('vision-start', async (e) => {
+  if (!fromVision(e)) return null;
+  const d = screen.getPrimaryDisplay();
+  const sourceId = await vision.sourceId(d);
+  if (!sourceId) return null;
+  sentRate = null; // the page is listening now: send the rate again
+  updateVision();
+  return { sourceId, width: Math.round(d.size.width * vision.SCALE), height: Math.round(d.size.height * vision.SCALE) };
+});
+ipcMain.on('vision-edges', (e, raw) => {
+  if (!fromVision(e) || !getSettings().visionTerrain) return;
+  if (process.env.DESKPET_VISION_DEBUG) console.log('[vision]', Date.now() % 100000, raw.ledges.length, 'ledges', raw.walls.length, 'walls');
+  sendEdges(vision.toScreen(raw, screen.getPrimaryDisplay(), raw.w, raw.h));
+});
+ipcMain.on('vision-failed', (e, why) => fromVision(e) && streamGone(why));
+
+// Looks at the screen after `delay` ms: the stream's next frame, or a
+// screenshot when there is no stream.
+function scanSoon(delay) {
+  updateVision();
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(() => {
+    if (streamAlive()) visionWin.webContents.send('vision-now');
+    else scanLedges();
+  }, delay);
+}
+
+// Fallback without the stream: one-off screenshots.
 async function scanLedges() {
+  if (streamAlive()) return; // the stream took over
   scanSoon(petsOnStage ? 900 : 3000);
-  if (scanning || !getSettings().enabled) return;
+  if (scanning || !overlayLive() || !getSettings().enabled) return;
   if (!getSettings().visionTerrain) {
     overlay.webContents.send('ledges', []);
     return overlay.webContents.send('walls', []);
@@ -259,12 +341,7 @@ async function scanLedges() {
   scanning = true;
   try {
     const edges = await vision.scan(screen.getPrimaryDisplay());
-    if (edges) {
-      const b = overlay.getBounds();
-      const local = (r) => ({ ...r, left: r.left - b.x, right: r.right - b.x, top: r.top - b.y, bottom: r.bottom - b.y });
-      overlay.webContents.send('ledges', edges.ledges.map(local));
-      overlay.webContents.send('walls', edges.walls.map(local));
-    }
+    if (edges) sendEdges(edges);
   } catch (e) {
     console.warn('[DeskPet] screen scan failed:', e.message);
   } finally {
@@ -320,6 +397,7 @@ function createOverlay() {
   let last = '';
   let lastSent = 0;
   setInterval(() => {
+    if (!overlayLive()) return;
     const p = screen.getCursorScreenPoint();
     const b = overlay.getBounds();
     const key = p.x + ',' + p.y;
@@ -460,8 +538,8 @@ app.whenReady().then(() => {
 });
 
 app.on('second-instance', openSettings);
+app.on('before-quit', () => (quitting = true)); // before the windows close: timers stand down
 app.on('will-quit', () => {
-  quitting = true;
   if (tracker) tracker.kill();
 });
 app.on('window-all-closed', () => {}); // keep running in the tray

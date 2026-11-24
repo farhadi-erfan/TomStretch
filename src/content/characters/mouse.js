@@ -15,6 +15,7 @@
     displayName: 'Pip',
     width: 46,
     height: 55,
+    sole: 94 / 96,
     hand: { x: 0.78, y: 0.45 },
     rive: { file: 'mouse.riv', artboard: 'Mouse', stateMachine: 'Pet', frame: { width: 160, height: 126, left: 40, box: [80, 96] } }, // optional, see cat.js
     svg: `

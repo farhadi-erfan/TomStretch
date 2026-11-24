@@ -7,6 +7,10 @@
 'use strict';
 const { swing, keys, repeat } = require('./rml');
 
+// The climb mask (rigs.js, edge.js) rests this far right of its climbing place,
+// where it covers the whole far arm; the climb pose moves it back.
+const MASK_PARK = 1000;
+
 // Mirror a pose onto the left (s = 1) and right (s = -1) limb.
 const pair = (name, fn) => ({ [`${name}L`]: fn(1), [`${name}R`]: fn(-1) });
 // Near and far limb of the side view; the far one runs half a cycle behind.
@@ -61,7 +65,8 @@ function poses(isMouse) {
     sArmN: { rot: -128 }, sArmF: { rot: -108 }, sLegN: { rot: 48 }, sLegF: { rot: 68 }, sShinN: { rot: 16 }, sShinF: { rot: 16 },
   });
   def('climb', 30, true, merge(
-    { sRig: { x: 9 }, sTorso: { rot: -4 }, sHead: { rot: -18 }, sTail: { rot: swing(1, -8, 12) } },
+    // sEdge: bring the far arm's clip to the wall's edge (edge.js).
+    { sRig: { x: 9 }, sTorso: { rot: -4 }, sHead: { rot: -18 }, sTail: { rot: swing(1, -8, 12) }, sEdge: { x: -MASK_PARK } },
     { sArmF: { rot: swing(1, -158, -104) }, sArmN: { rot: swing(1, -158, -104, 0.5) } },
     { sLegF: { rot: swing(1, -48, 6) }, sLegN: { rot: swing(1, -48, 6, 0.5) } },
     { sShinF: { rot: swing(1, 72, 8) }, sShinN: { rot: swing(1, 72, 8, 0.5) } },
@@ -247,4 +252,4 @@ function wideHead(P, LIMIT) {
   return out;
 }
 
-module.exports = { poses };
+module.exports = { poses, MASK_PARK };

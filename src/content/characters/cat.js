@@ -16,6 +16,7 @@
     displayName: 'Biscuit',
     width: 96,
     height: 112,
+    sole: 137 / 140, // where the soles are, as a fraction of the box height (the art leaves room below)
     hand: { x: 0.775, y: 0.37 }, // raised right paw, as a fraction of the box
     // Optional Rive art (desktop). Drop the file in assets/rive/ and it is used
     // instead of the SVG below; see assets/rive/README.md for what it must contain.

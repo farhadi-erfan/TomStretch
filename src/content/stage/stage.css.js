@@ -12,7 +12,7 @@
 }
 .dp-stage.dp-off { display: none; }
 
-.dp-char { position: absolute; left: 0; bottom: 4px; z-index: 2; transform-origin: 50% 100%; }
+.dp-char { position: absolute; left: 0; bottom: 0; z-index: 2; transform-origin: 50% var(--sole, 100%); }
 .dp-char.dp-hidden { display: none; }
 .dp-char canvas.dp-rive { display: block; width: 100%; height: 100%; }
 .dp-char svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.22)); }

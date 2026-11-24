@@ -27,6 +27,7 @@
     opacity: 1, // 0.2..1
     size: 1, // character scale
     visionTerrain: true, // desktop: look at the screen to find ledges inside windows
+    visionHz: 8, // desktop: how many times a second to look while the pets are out
     simpleArt: false, // desktop: draw the built-in SVG characters instead of the Rive files
   };
 
@@ -40,6 +41,7 @@
     volume: [0, 1],
     opacity: [0.2, 1],
     size: [0.5, 2],
+    visionHz: [1, 15],
   };
 
   function merge(stored) {

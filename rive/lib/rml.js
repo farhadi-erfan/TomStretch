@@ -18,6 +18,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
 // A part: a named pivot with children (shapes and other parts), back-to-front.
 // opts.opacity: resting opacity (for parts that states switch on and off).
+// opts.clipBy: name of a mask shape (see `mask`) to clip the part to.
 const part = (name, pivot, children, opts = {}) => ({ kind: 'part', name, pivot, children, ...opts });
 
 const ellipse = (cx, cy, rx, ry, paint) => ({ kind: 'ellipse', cx, cy, rx, ry, paint });
@@ -29,6 +30,8 @@ const strokes = (paths, paint) => ({ kind: 'strokes', paths, paint });
 // Drawn artwork: closed or open cubic paths (from design/parts/drawn/draw.py).
 // paths: [{closed, start: [x, y], segs: [{c1, c2, p} | {p}]}]
 const svg = (paths, paint) => ({ kind: 'svg', paths, paint });
+// An unpainted polygon that parts name in `clipBy`: they show only inside it.
+const mask = (name, points) => ({ kind: 'poly', points, paint: {}, maskName: name });
 
 // paint: {fill, stroke, width, alpha}
 function paintRml(paint, pad) {
@@ -116,9 +119,13 @@ class Build {
   constructor() {
     this.next = 10;
     this.parts = {}; // name -> {id, rest: {x, y, opacity}}
+    this.masks = {}; // mask name -> id (handed out on first mention, either end)
   }
   id() {
     return `0:${this.next++}`;
+  }
+  maskId(name) {
+    return this.masks[name] || (this.masks[name] = this.id());
   }
 
   shape(s, origin, pad) {
@@ -141,7 +148,8 @@ class Build {
         const [nx, ny] = s.points[(i + 1) % s.points.length];
         area += x * ny - nx * y;
       });
-      let out = `${pad}<Shape name="Poly">\n${pad}    <PointsPath isClosed="true" isClockwise="${area > 0}" name="Path">\n`;
+      const id = s.maskName ? ` id="${this.maskId(s.maskName)}"` : '';
+      let out = `${pad}<Shape name="${s.maskName ? esc(s.maskName) : 'Poly'}"${id}>\n${pad}    <PointsPath isClosed="true" isClockwise="${area > 0}" name="Path">\n`;
       for (const [x, y] of s.points) out += `${pad}        <StraightVertex x="${num(x - origin[0])}" y="${num(y - origin[1])}"/>\n`;
       return out + `${pad}    </PointsPath>\n` + paintRml(s.paint, pad + '    ') + `${pad}</Shape>\n`;
     }
@@ -165,6 +173,7 @@ class Build {
     const rest = { x: p.pivot[0] - parentPivot[0], y: p.pivot[1] - parentPivot[1], opacity: p.opacity == null ? 1 : p.opacity };
     this.parts[p.name] = { id, rest };
     let out = `${pad}<Node x="${num(rest.x)}" y="${num(rest.y)}"${rest.opacity !== 1 ? ` opacity="${num(rest.opacity)}"` : ''} name="${esc(p.name)}" id="${id}">\n`;
+    if (p.clipBy) out += `${pad}    <ClippingShape sourceId="${this.maskId(p.clipBy)}" name="Clip"/>\n`;
     // Rive paints the FIRST sibling on top; the description is back-to-front.
     for (const c of [...p.children].reverse()) {
       out += c.kind === 'part' ? this.part(c, p.pivot, pad + '    ') : this.shape(c, p.pivot, pad + '    ');
@@ -237,4 +246,4 @@ function animationRml(build, name, id, frames, loop, pose, pad) {
   return out + `${pad}</LinearAnimation>\n`;
 }
 
-module.exports = { part, ellipse, rect, poly, strokes, svg, Build, swing, keys, repeat, animationRml, num, esc };
+module.exports = { part, ellipse, rect, poly, strokes, svg, mask, Build, swing, keys, repeat, animationRml, num, esc };

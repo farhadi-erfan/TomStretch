@@ -18,13 +18,38 @@
     return w;
   }
 
+  // Where the pets and their props have been lately. A frame of the screen is
+  // a little old by the time its edges arrive (0.1-0.2 s), so a running pet's
+  // outline in it sits behind where the pet is now; checking only the pet's
+  // current box would let the cat stand on its own old outline.
+  const HISTORY_MS = 700;
+  const history = []; // [{t, rects}]
+  function ourRects(w) {
+    const rects = [w.cat, w.mouse].filter((c) => !c.hidden).map((c) => c.el.getBoundingClientRect());
+    for (const el of w.stage.root.querySelectorAll('.dp-show')) rects.push(el.getBoundingClientRect());
+    return rects;
+  }
+  setInterval(() => {
+    const w = DeskPet.world;
+    if (!w) return;
+    const now = Date.now();
+    history.push({ t: now, rects: ourRects(w) });
+    while (history.length && now - history[0].t > HISTORY_MS) history.shift();
+  }, 50);
+
+  // An edge counts once it shows up in two frames in a row at about the same
+  // place (or was already in use): a one-frame edge is usually something
+  // moving, a pet included.
+  const lastSeen = {}; // name -> rects of the previous frame
+  const same = (p, q) => Math.abs(p.left - q.left) < 6 && Math.abs(p.right - q.right) < 6 && Math.abs(p.top - q.top) < 6 && Math.abs(p.bottom - q.bottom) < 6;
+
   function setLayer(w, name, rects) {
     if (name === 'windows') return w.terrain.setLayer('windows', rects, { occlusion: true });
     // A screenshot also sees the pets and their props: ignore edges that lie
-    // mostly within one of them. (The ledge a pet stands on runs well past its
-    // feet, so it survives.)
-    const ours = [w.cat, w.mouse].filter((c) => !c.hidden).map((c) => c.el.getBoundingClientRect());
-    for (const el of w.stage.root.querySelectorAll('.dp-show')) ours.push(el.getBoundingClientRect());
+    // mostly within one of them, now or lately. (The ledge a pet stands on
+    // runs well past its feet, so it survives.)
+    const ours = ourRects(w);
+    for (const h of history) ours.push(...h.rects);
     const inside = (r, b) => {
       const pad = 6;
       const ox = Math.min(r.right, b.right + pad) - Math.max(r.left, b.left - pad);
@@ -32,16 +57,23 @@
       if (ox <= 0 || oy <= 0) return false;
       return name === 'walls' ? oy / Math.max(1, r.bottom - r.top) > 0.7 : ox / Math.max(1, r.right - r.left) > 0.7;
     };
-    const clean = rects.filter((r) => !ours.some((b) => inside(r, b)));
+    const fresh = rects.filter((r) => !ours.some((b) => inside(r, b)));
+    const before = lastSeen[name] || [];
+    const inUse = (w.terrain.layers[name] || { rects: [] }).rects;
+    lastSeen[name] = fresh;
+    const clean = fresh.filter((r) => before.some((q) => same(r, q)) || inUse.some((q) => same(r, q)));
     if (name === 'ledges') {
       // A pet's own body can hide the edge it stands on from the screenshot:
-      // keep that ledge until it is really gone (the window moved, say).
+      // keep that ledge for a few seconds until it is really gone (the window
+      // moved, say).
+      const now = Date.now();
       for (const c of [w.cat, w.mouse]) {
         if (c.hidden) continue;
         const p = w.terrain.standingOn(c.x, c.y);
         if (!p || p.kind !== 'ledge') continue;
         const still = clean.some((r) => Math.abs(r.top - p.rect.top) < 8 && r.left < c.x && r.right > c.x);
-        if (!still && (p.rect.missed = (p.rect.missed || 0) + 1) < 4) clean.push(p.rect);
+        if (still) p.rect.lostAt = 0;
+        else if (now - (p.rect.lostAt || (p.rect.lostAt = now)) < 3000) clean.push(p.rect);
       }
     }
     w.terrain.setLayer(name, clean);

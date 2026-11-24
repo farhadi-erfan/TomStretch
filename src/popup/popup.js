@@ -27,7 +27,7 @@
   }
 
   const CHECKS = ['enabled', 'restoreAfterBreak', 'cursorGag', 'buttonReactions', 'visionTerrain'];
-  const NUMBERS = ['intervalMinutes', 'snoozeMinutes', 'volume', 'opacity', 'size'];
+  const NUMBERS = ['intervalMinutes', 'snoozeMinutes', 'volume', 'opacity', 'size', 'visionHz'];
 
   for (const id of CHECKS) $(id).addEventListener('change', () => save({ [id]: $(id).checked }));
   for (const id of NUMBERS) {
@@ -74,6 +74,7 @@
   function render() {
     for (const id of CHECKS) $(id).checked = !!s[id];
     for (const id of NUMBERS) $(id).value = s[id];
+    $('visionHz').disabled = !s.visionTerrain;
     $('snooze').textContent = `Snooze ${s.snoozeMinutes} min`;
     for (const box of document.querySelectorAll('[data-exercise]')) box.checked = !!s.exercises[box.dataset.exercise];
     renderStatus();

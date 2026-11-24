@@ -3,7 +3,9 @@
 // head, armL...; side view: the same with an "s" prefix, limbs N(ear)/F(ar)).
 // Children are listed back-to-front.
 'use strict';
-const { part, ellipse, rect, poly, strokes, svg } = require('./rml');
+const { part, ellipse, rect, poly, strokes, svg, mask } = require('./rml');
+const { climbMask } = require('./edge');
+const { MASK_PARK } = require('./poses');
 
 const ink = (color, width, alpha) => ({ stroke: color, width, alpha });
 
@@ -50,14 +52,19 @@ function drawnFront(D) {
   ]);
 }
 
-// The side view (facing right; sideFlip mirrors it), from the same file.
-function drawnSide(D, flipX) {
+// The side view (facing right; sideFlip mirrors it about the box's centre),
+// from the same file. box and isMouse place the climb mask (see edge.js).
+function drawnSide(D, box, isMouse) {
   const J = D.joints;
   const art = (name) => (D.parts[name] || []).map((s) => svg(s.paths, { fill: s.fill, stroke: s.stroke, width: s.width }));
   const P = (name, joint, children, opts) => part(name, J[joint], children, opts);
   const hidden = { opacity: 0 };
   const leg = (s, l) => P(`sLeg${s}`, `sLeg${s}`, [...art(`s-thigh-${l}`), P(`sShin${s}`, `sShin${s}`, art(`s-shin-${l}`))]);
-  const arm = (s, l) => P(`sArm${s}`, `sArm${s}`, [...art(`s-arm-${l}`), P(`sFore${s}`, `sFore${s}`, art(`s-fore-${l}`))]);
+  const arm = (s, l, opts) => P(`sArm${s}`, `sArm${s}`, [...art(`s-arm-${l}`), P(`sFore${s}`, `sFore${s}`, art(`s-fore-${l}`))], opts);
+  // The far arm is clipped at the wall's edge while climbing. The mask sits
+  // MASK_PARK units to the right (covering the whole arm) and the climb pose
+  // moves it into place (sEdge in poses.js).
+  const edge = part('sEdge', J.sTorso, [mask('climbEdge', climbMask(D, box[0], isMouse).map(([x, y]) => [x + MASK_PARK, y]))]);
   const head = P('sHead', 'sHead', [
     ...art('s-ear-f'),
     ...art('s-tuft'),
@@ -74,18 +81,18 @@ function drawnSide(D, flipX) {
   // Far limbs behind the body; the near leg in front of it (its hip cap hides
   // the torso's hip, as in the front view) and the near arm on top.
   return part('side', [0, 0], [
-    part('sideFlip', [flipX, 0], [
+    part('sideFlip', [box[0] / 2, 0], [
       P('sRig', 'sRig', [
         P('sTail', 'sTail', art('s-tail')),
         leg('F', 'f'),
-        P('sTorso', 'sTorso', [arm('F', 'f'), ...art('s-torso'), head, ...art('s-scarf'), arm('N', 'n')]),
+        P('sTorso', 'sTorso', [edge, arm('F', 'f', { clipBy: 'climbEdge' }), ...art('s-torso'), head, ...art('s-scarf'), arm('N', 'n')]),
         leg('N', 'n'),
       ]),
     ]),
   ], hidden);
 }
 
-const drawn = (D, flipX) => [drawnFront(D), drawnSide(D.side, flipX)];
+const drawn = (D, box, isMouse) => [drawnFront(D), drawnSide(D.side, box, isMouse)];
 
 function cat() {
   const FUR = '#f2994a';
@@ -190,7 +197,7 @@ function cat() {
     ]),
   ], { opacity: 0 });
 
-  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: process.env.OLD_CAT ? [front, side] : drawn(require('./cat-drawn.json'), 60) };
+  return { name: 'cat', artboard: 'Cat', box: [120, 140], pupil: 2.6, parts: process.env.OLD_CAT ? [front, side] : drawn(require('./cat-drawn.json'), [120, 140], false) };
 }
 
 function mouse() {
@@ -266,7 +273,7 @@ function mouse() {
     ]),
   ], { opacity: 0 });
 
-  return { name: 'mouse', artboard: 'Mouse', box: [80, 96], pupil: 1.8, parts: process.env.OLD_MOUSE ? [front, side] : drawn(require('./mouse-drawn.json'), 40) };
+  return { name: 'mouse', artboard: 'Mouse', box: [80, 96], pupil: 1.8, parts: process.env.OLD_MOUSE ? [front, side] : drawn(require('./mouse-drawn.json'), [80, 96], true) };
 }
 
 module.exports = { cat, mouse };
